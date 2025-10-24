@@ -25,15 +25,13 @@ type Tester struct {
 	rateLimiter bucket.Limiter
 	crawler     *crawler.Crawler
 	logger      *slog.Logger
-}
 
-// Thread-safe mutexes for result aggregation
-var (
-	validationsMutex   sync.Mutex
-	errorsMutex        sync.Mutex
-	responseTimesMutex sync.Mutex
-	slowRequestsMutex  sync.Mutex
-)
+	// Thread-safe mutexes for result aggregation
+	validationsMu   sync.Mutex
+	errorsMu        sync.Mutex
+	responseTimesMu sync.Mutex
+	slowRequestsMu  sync.Mutex
+}
 
 // New creates a new stress tester
 func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
@@ -261,26 +259,26 @@ func (t *Tester) recordSlowRequest(url string, responseTime time.Duration, statu
 
 // Thread-safe methods for adding to slices
 func (t *Tester) addValidation(validation domain.URLValidation) {
-	validationsMutex.Lock()
-	defer validationsMutex.Unlock()
+	t.validationsMu.Lock()
+	defer t.validationsMu.Unlock()
 	t.results.URLValidations = append(t.results.URLValidations, validation)
 }
 
 func (t *Tester) addError(errInfo domain.ErrorInfo) {
-	errorsMutex.Lock()
-	defer errorsMutex.Unlock()
+	t.errorsMu.Lock()
+	defer t.errorsMu.Unlock()
 	t.results.Errors = append(t.results.Errors, errInfo)
 }
 
 func (t *Tester) addResponseTime(entry domain.ResponseTimeEntry) {
-	responseTimesMutex.Lock()
-	defer responseTimesMutex.Unlock()
+	t.responseTimesMu.Lock()
+	defer t.responseTimesMu.Unlock()
 	t.results.ResponseTimes = append(t.results.ResponseTimes, entry)
 }
 
 func (t *Tester) addSlowRequest(req domain.SlowRequest) {
-	slowRequestsMutex.Lock()
-	defer slowRequestsMutex.Unlock()
+	t.slowRequestsMu.Lock()
+	defer t.slowRequestsMu.Unlock()
 	t.results.SlowRequests = append(t.results.SlowRequests, req)
 }
 
@@ -314,12 +312,12 @@ func (t *Tester) calculateResults(duration time.Duration) {
 	t.results.Duration = duration.String()
 
 	// Calculate response time statistics
-	responseTimesMutex.Lock()
+	t.responseTimesMu.Lock()
 	responseTimes := make([]time.Duration, len(t.results.ResponseTimes))
 	for i, entry := range t.results.ResponseTimes {
 		responseTimes[i] = entry.ResponseTime
 	}
-	responseTimesMutex.Unlock()
+	t.responseTimesMu.Unlock()
 
 	if len(responseTimes) > 0 {
 		sort.Slice(responseTimes, func(i, j int) bool {
@@ -347,9 +345,9 @@ func (t *Tester) calculateResults(duration time.Duration) {
 	}
 
 	// Sort slow requests by response time
-	slowRequestsMutex.Lock()
+	t.slowRequestsMu.Lock()
 	sort.Slice(t.results.SlowRequests, func(i, j int) bool {
 		return t.results.SlowRequests[i].ResponseTime > t.results.SlowRequests[j].ResponseTime
 	})
-	slowRequestsMutex.Unlock()
+	t.slowRequestsMu.Unlock()
 }
