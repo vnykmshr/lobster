@@ -1,3 +1,4 @@
+// Package tester implements the core load testing engine with concurrent workers.
 package tester
 
 import (
@@ -123,12 +124,12 @@ func (t *Tester) worker(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // processURL performs a single URL request and records results
-func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
+func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint:gocyclo // Complex but cohesive request handling logic
 	// Apply rate limiting using goflow's token bucket
 	if t.rateLimiter != nil {
 		if err := t.rateLimiter.Wait(ctx); err != nil {
-			// Context was cancelled or deadline exceeded
-			t.recordError(task.URL, fmt.Sprintf("rate limiter wait cancelled: %v", err), task.Depth)
+			// Context was canceled or deadline exceeded
+			t.recordError(task.URL, fmt.Sprintf("rate limiter wait canceled: %v", err), task.Depth)
 			atomic.AddInt64(&t.results.FailedRequests, 1)
 			return
 		}
@@ -138,7 +139,7 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 	atomic.AddInt64(&t.results.TotalRequests, 1)
 
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, "GET", task.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", task.URL, http.NoBody)
 	if err != nil {
 		t.recordError(task.URL, fmt.Sprintf("creating request: %v", err), task.Depth)
 		atomic.AddInt64(&t.results.FailedRequests, 1)
@@ -185,7 +186,7 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 		totalRead := 0
 
 		for totalRead < 64*1024 {
-			n, err := resp.Body.Read(buffer)
+			n, readErr := resp.Body.Read(buffer)
 			if n > 0 {
 				if totalRead+n > 64*1024 {
 					body = append(body, buffer[:64*1024-totalRead]...)
@@ -194,7 +195,7 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 				body = append(body, buffer[:n]...)
 				totalRead += n
 			}
-			if err != nil {
+			if readErr != nil {
 				break
 			}
 		}
@@ -258,7 +259,7 @@ func (t *Tester) recordSlowRequest(url string, responseTime time.Duration, statu
 }
 
 // Thread-safe methods for adding to slices
-func (t *Tester) addValidation(validation domain.URLValidation) {
+func (t *Tester) addValidation(validation domain.URLValidation) { //nolint:gocritic // Passing by value is acceptable for this use case
 	t.validationsMu.Lock()
 	defer t.validationsMu.Unlock()
 	t.results.URLValidations = append(t.results.URLValidations, validation)

@@ -149,7 +149,8 @@ func TestSaveToFile_Success(t *testing.T) {
 	}
 
 	// Verify file was created
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	_, statErr := os.Stat(configPath)
+	if os.IsNotExist(statErr) {
 		t.Error("SaveToFile() did not create file")
 	}
 

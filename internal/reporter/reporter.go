@@ -1,3 +1,4 @@
+// Package reporter generates test reports in various formats (console, JSON, HTML).
 package reporter
 
 import (
@@ -43,7 +44,8 @@ func (r *Reporter) GenerateHTML(outputPath string) error {
 		_ = file.Close()
 	}()
 
-	if err := t.Execute(file, data); err != nil {
+	err = t.Execute(file, data)
+	if err != nil {
 		return fmt.Errorf("executing template: %w", err)
 	}
 
@@ -57,7 +59,8 @@ func (r *Reporter) GenerateJSON(outputPath string) error {
 		return fmt.Errorf("marshaling JSON: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, data, 0o600); err != nil {
+	err = os.WriteFile(outputPath, data, 0o600)
+	if err != nil {
 		return fmt.Errorf("writing JSON file: %w", err)
 	}
 
@@ -148,7 +151,7 @@ func (r *Reporter) prepareTemplateData() map[string]interface{} {
 
 	// Sort by status code
 	sort.Slice(statusDistribution, func(i, j int) bool {
-		return statusDistribution[i]["StatusCode"].(int) < statusDistribution[j]["StatusCode"].(int)
+		return statusDistribution[i]["StatusCode"].(int) < statusDistribution[j]["StatusCode"].(int) //nolint:errcheck // Type is guaranteed in template data
 	})
 
 	// Prepare URL validations with status groups

@@ -37,7 +37,7 @@ func TestURLValidation_IsValidLogic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			validation := URLValidation{
+			validation := URLValidation{ //nolint:govet // Test uses complete struct initialization for realism
 				URL:           "https://example.com",
 				StatusCode:    tt.statusCode,
 				ResponseTime:  100 * time.Millisecond,

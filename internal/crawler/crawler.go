@@ -1,3 +1,4 @@
+// Package crawler provides URL discovery and link extraction for web crawling.
 package crawler
 
 import (
@@ -12,8 +13,8 @@ import (
 
 // Crawler handles URL discovery and link extraction
 type Crawler struct {
-	baseURL        *url.URL
 	discoveredURLs sync.Map
+	baseURL        *url.URL
 	urlPattern     *regexp.Regexp
 	maxDepth       int
 }

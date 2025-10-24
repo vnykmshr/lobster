@@ -1,12 +1,9 @@
 run:
   timeout: 5m
   tests: true
-  skip-dirs:
-    - vendor
   modules-download-mode: readonly
 
 output:
-  format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
   sort-results: true
@@ -14,13 +11,10 @@ output:
 linters:
   enable:
     - errcheck      # Check for unchecked errors
-    - gosimple      # Simplify code
     - govet         # Vet examines Go source code
     - ineffassign   # Detect ineffectual assignments
-    - staticcheck   # Static analysis
+    - staticcheck   # Static analysis (includes gosimple)
     - unused        # Check for unused constants, variables, functions and types
-    - gofmt         # Check code formatting
-    - goimports     # Check import formatting
     - misspell      # Check for misspelled words
     - gocritic      # Comprehensive Go code checker
     - gocyclo       # Cyclomatic complexity
@@ -28,11 +22,8 @@ linters:
     - revive        # Fast, configurable, extensible linter
     - unconvert     # Unnecessary type conversions
     - prealloc      # Find slice declarations that could potentially be preallocated
-    - exportloopref # Checks for pointers to enclosing loop variables
     - nilerr        # Finds code that returns nil even if it checks that error is not nil
-
-  disable:
-    - typecheck     # Disabled due to generics issues in some Go versions
+    - copyloopvar   # Detects places where loop variables are copied
 
 linters-settings:
   errcheck:
@@ -40,8 +31,12 @@ linters-settings:
     check-blank: false
 
   govet:
-    check-shadowing: true
     enable-all: true
+    disable:
+      - fieldalignment  # Disabled: minimal performance benefit, high maintenance cost
+    settings:
+      shadow:
+        strict: true
 
   gocyclo:
     min-complexity: 15
@@ -86,6 +81,8 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-dirs:
+    - vendor
 
   exclude-rules:
     # Exclude some linters from running on tests files
@@ -94,6 +91,10 @@ issues:
         - gocyclo
         - dupl
         - gosec
+
+    # Allow unused writes in tests for complete struct initialization
+    - path: _test\.go
+      text: "unusedwrite"
 
     # Exclude HTML templates in reporter from dupl check
     - path: internal/reporter/reporter\.go

@@ -1,3 +1,4 @@
+// Package validator validates test results against performance targets.
 package validator
 
 import (

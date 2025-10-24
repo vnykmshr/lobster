@@ -1,31 +1,32 @@
+// Package domain defines core domain types and entities for the load testing tool.
 package domain
 
 import "time"
 
 // Config represents the complete test configuration
 type Config struct {
+	PerformanceTargets PerformanceTargets `json:"performance_targets"`
 	BaseURL            string             `json:"base_url"`
-	Concurrency        int                `json:"concurrency"`
 	Duration           string             `json:"duration"`
 	Timeout            string             `json:"timeout"`
-	Rate               float64            `json:"rate"`
 	UserAgent          string             `json:"user_agent"`
-	FollowLinks        bool               `json:"follow_links"`
-	MaxDepth           int                `json:"max_depth"`
 	OutputFile         string             `json:"output_file"`
+	Rate               float64            `json:"rate"`
+	Concurrency        int                `json:"concurrency"`
+	MaxDepth           int                `json:"max_depth"`
+	FollowLinks        bool               `json:"follow_links"`
 	Verbose            bool               `json:"verbose"`
-	PerformanceTargets PerformanceTargets `json:"performance_targets"`
 }
 
 // TesterConfig represents the configuration for the stress tester
 type TesterConfig struct {
-	BaseURL        string
-	Concurrency    int
 	RequestTimeout time.Duration
+	BaseURL        string
 	UserAgent      string
-	FollowLinks    bool
-	MaxDepth       int
 	Rate           float64
+	Concurrency    int
+	MaxDepth       int
+	FollowLinks    bool
 }
 
 // DefaultConfig returns a sensible default configuration

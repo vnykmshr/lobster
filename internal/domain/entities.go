@@ -10,56 +10,56 @@ type URLTask struct {
 
 // TestResults contains comprehensive test execution results
 type TestResults struct {
-	Duration              string                 `json:"duration"`
-	URLsDiscovered        int                    `json:"urls_discovered"`
-	TotalRequests         int64                  `json:"total_requests"`
-	SuccessfulRequests    int64                  `json:"successful_requests"`
-	FailedRequests        int64                  `json:"failed_requests"`
-	AverageResponseTime   string                 `json:"average_response_time"`
-	MinResponseTime       string                 `json:"min_response_time"`
-	MaxResponseTime       string                 `json:"max_response_time"`
-	RequestsPerSecond     float64                `json:"requests_per_second"`
-	SuccessRate           float64                `json:"success_rate"`
 	URLValidations        []URLValidation        `json:"url_validations"`
 	Errors                []ErrorInfo            `json:"errors"`
 	SlowRequests          []SlowRequest          `json:"slow_requests"`
 	ResponseTimes         []ResponseTimeEntry    `json:"response_times"`
 	PerformanceValidation map[string]interface{} `json:"performance_validation,omitempty"`
+	Duration              string                 `json:"duration"`
+	AverageResponseTime   string                 `json:"average_response_time"`
+	MinResponseTime       string                 `json:"min_response_time"`
+	MaxResponseTime       string                 `json:"max_response_time"`
+	TotalRequests         int64                  `json:"total_requests"`
+	SuccessfulRequests    int64                  `json:"successful_requests"`
+	FailedRequests        int64                  `json:"failed_requests"`
+	RequestsPerSecond     float64                `json:"requests_per_second"`
+	SuccessRate           float64                `json:"success_rate"`
+	URLsDiscovered        int                    `json:"urls_discovered"`
 }
 
 // URLValidation represents the validation result for a single URL
 type URLValidation struct {
-	URL           string        `json:"url"`
-	StatusCode    int           `json:"status_code"`
 	ResponseTime  time.Duration `json:"response_time"`
 	ContentLength int64         `json:"content_length"`
+	URL           string        `json:"url"`
 	ContentType   string        `json:"content_type"`
+	Error         string        `json:"error,omitempty"`
+	StatusCode    int           `json:"status_code"`
 	LinksFound    int           `json:"links_found"`
 	Depth         int           `json:"depth"`
-	Error         string        `json:"error,omitempty"`
 	IsValid       bool          `json:"is_valid"`
 }
 
 // ErrorInfo represents an error encountered during testing
 type ErrorInfo struct {
+	Timestamp time.Time `json:"timestamp"`
 	URL       string    `json:"url"`
 	Error     string    `json:"error"`
-	Timestamp time.Time `json:"timestamp"`
 	Depth     int       `json:"depth"`
 }
 
 // SlowRequest represents a request that exceeded the slow threshold
 type SlowRequest struct {
-	URL          string        `json:"url"`
 	ResponseTime time.Duration `json:"response_time"`
+	URL          string        `json:"url"`
 	StatusCode   int           `json:"status_code"`
 }
 
 // ResponseTimeEntry represents a single response time measurement
 type ResponseTimeEntry struct {
-	URL          string        `json:"url"`
-	ResponseTime time.Duration `json:"response_time"`
 	Timestamp    time.Time     `json:"timestamp"`
+	ResponseTime time.Duration `json:"response_time"`
+	URL          string        `json:"url"`
 }
 
 // PerformanceTarget represents a performance validation target

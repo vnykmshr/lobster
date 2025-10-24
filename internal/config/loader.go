@@ -1,3 +1,4 @@
+// Package config handles loading and saving configuration files for load tests.
 package config
 
 import (
@@ -24,7 +25,8 @@ func (l *Loader) LoadFromFile(path string) (*domain.Config, error) {
 	}
 
 	var config domain.Config
-	if err := json.Unmarshal(data, &config); err != nil {
+	err = json.Unmarshal(data, &config)
+	if err != nil {
 		return nil, fmt.Errorf("parsing config JSON: %w", err)
 	}
 
@@ -38,7 +40,8 @@ func (l *Loader) SaveToFile(config *domain.Config, path string) error {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	err = os.WriteFile(path, data, 0o600)
+	if err != nil {
 		return fmt.Errorf("writing config file: %w", err)
 	}
 

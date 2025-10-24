@@ -1,3 +1,4 @@
+// Package main provides the command-line interface for the Lobster load testing tool.
 package main
 
 import (
@@ -105,7 +106,8 @@ func main() {
 
 	stressTester, err := tester.New(testerConfig, logger)
 	if err != nil {
-		log.Fatalf("Failed to create tester: %v", err)
+		cancel()
+		log.Fatalf("Failed to create tester: %v", err) //nolint:gocritic // cancel() is called explicitly before exit
 	}
 
 	// Run stress test
@@ -147,14 +149,17 @@ func main() {
 		results.PerformanceValidation = performanceValidator.GetValidationSummary()
 
 		// Save JSON results
-		if err := rep.GenerateJSON(cfg.OutputFile); err != nil {
+		err = rep.GenerateJSON(cfg.OutputFile)
+		if err != nil {
+			cancel()
 			log.Fatalf("Failed to save results: %v", err)
 		}
 		logger.Info("Results saved", "file", cfg.OutputFile)
 
 		// Generate HTML report
 		htmlFile := strings.TrimSuffix(cfg.OutputFile, filepath.Ext(cfg.OutputFile)) + ".html"
-		if err := rep.GenerateHTML(htmlFile); err != nil {
+		err = rep.GenerateHTML(htmlFile)
+		if err != nil {
 			logger.Error("Failed to generate HTML report", "error", err)
 		} else {
 			logger.Info("HTML report generated", "file", htmlFile)
@@ -164,14 +169,14 @@ func main() {
 
 type configOptions struct {
 	baseURL     string
-	concurrency int
 	duration    string
 	timeout     string
-	rate        float64
 	userAgent   string
-	followLinks bool
-	maxDepth    int
 	outputFile  string
+	rate        float64
+	concurrency int
+	maxDepth    int
+	followLinks bool
 	verbose     bool
 }
 
