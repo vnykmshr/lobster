@@ -28,11 +28,11 @@ type Tester struct {
 	crawler     *crawler.Crawler
 	logger      *slog.Logger
 
-	// Thread-safe mutexes for result aggregation
-	validationsMu   sync.Mutex
-	errorsMu        sync.Mutex
-	responseTimesMu sync.Mutex
-	slowRequestsMu  sync.Mutex
+	// Result channels for lock-free aggregation
+	validationsCh   chan domain.URLValidation
+	errorsCh        chan domain.ErrorInfo
+	responseTimesCh chan domain.ResponseTimeEntry
+	slowRequestsCh  chan domain.SlowRequest
 }
 
 // New creates a new stress tester
@@ -60,13 +60,17 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 	}
 
 	return &Tester{
-		config:      config,
-		client:      &http.Client{Timeout: config.RequestTimeout},
-		urlQueue:    make(chan domain.URLTask, 10000),
-		results:     &domain.TestResults{URLValidations: make([]domain.URLValidation, 0)},
-		rateLimiter: rateLimiter,
-		crawler:     crawlerInstance,
-		logger:      logger,
+		config:          config,
+		client:          &http.Client{Timeout: config.RequestTimeout},
+		urlQueue:        make(chan domain.URLTask, 10000),
+		results:         &domain.TestResults{URLValidations: make([]domain.URLValidation, 0)},
+		rateLimiter:     rateLimiter,
+		crawler:         crawlerInstance,
+		logger:          logger,
+		validationsCh:   make(chan domain.URLValidation, 1000),
+		errorsCh:        make(chan domain.ErrorInfo, 1000),
+		responseTimesCh: make(chan domain.ResponseTimeEntry, 1000),
+		slowRequestsCh:  make(chan domain.SlowRequest, 100),
 	}, nil
 }
 
@@ -80,6 +84,11 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 	t.results.SlowRequests = make([]domain.SlowRequest, 0)
 
 	var wg sync.WaitGroup
+	var aggregatorWg sync.WaitGroup
+
+	// Start result aggregator
+	aggregatorWg.Add(1)
+	go t.aggregator(&aggregatorWg)
 
 	// Start workers
 	for i := 0; i < t.config.Concurrency; i++ {
@@ -101,10 +110,66 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 	close(t.urlQueue)
 	wg.Wait()
 
+	// Close result channels and wait for aggregator to finish
+	close(t.validationsCh)
+	close(t.errorsCh)
+	close(t.responseTimesCh)
+	close(t.slowRequestsCh)
+	aggregatorWg.Wait()
+
 	// Calculate final results
 	t.calculateResults(time.Since(startTime))
 
 	return t.results, nil
+}
+
+// aggregator collects results from workers via channels (lock-free)
+func (t *Tester) aggregator(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		select {
+		case validation, ok := <-t.validationsCh:
+			if !ok {
+				// All channels closed, drain remaining
+				t.drainChannels()
+				return
+			}
+			t.results.URLValidations = append(t.results.URLValidations, validation)
+
+		case errInfo := <-t.errorsCh:
+			t.results.Errors = append(t.results.Errors, errInfo)
+
+		case responseTime := <-t.responseTimesCh:
+			t.results.ResponseTimes = append(t.results.ResponseTimes, responseTime)
+
+		case slowReq := <-t.slowRequestsCh:
+			t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
+		}
+	}
+}
+
+// drainChannels ensures all remaining results are collected after channels are closed
+func (t *Tester) drainChannels() {
+	for {
+		select {
+		case errInfo, ok := <-t.errorsCh:
+			if ok {
+				t.results.Errors = append(t.results.Errors, errInfo)
+			}
+		case responseTime, ok := <-t.responseTimesCh:
+			if ok {
+				t.results.ResponseTimes = append(t.results.ResponseTimes, responseTime)
+			}
+		case slowReq, ok := <-t.slowRequestsCh:
+			if ok {
+				t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
+			}
+		default:
+			// All channels drained
+			return
+		}
+	}
 }
 
 // worker processes URLs from the queue
@@ -269,29 +334,21 @@ func (t *Tester) recordSlowRequest(url string, responseTime time.Duration, statu
 	t.addSlowRequest(slowReq)
 }
 
-// Thread-safe methods for adding to slices
-func (t *Tester) addValidation(validation domain.URLValidation) { //nolint:gocritic // Passing by value is acceptable for this use case
-	t.validationsMu.Lock()
-	defer t.validationsMu.Unlock()
-	t.results.URLValidations = append(t.results.URLValidations, validation)
+// Lock-free methods for sending results to aggregator via channels
+func (t *Tester) addValidation(validation domain.URLValidation) {
+	t.validationsCh <- validation
 }
 
 func (t *Tester) addError(errInfo domain.ErrorInfo) {
-	t.errorsMu.Lock()
-	defer t.errorsMu.Unlock()
-	t.results.Errors = append(t.results.Errors, errInfo)
+	t.errorsCh <- errInfo
 }
 
 func (t *Tester) addResponseTime(entry domain.ResponseTimeEntry) {
-	t.responseTimesMu.Lock()
-	defer t.responseTimesMu.Unlock()
-	t.results.ResponseTimes = append(t.results.ResponseTimes, entry)
+	t.responseTimesCh <- entry
 }
 
 func (t *Tester) addSlowRequest(req domain.SlowRequest) {
-	t.slowRequestsMu.Lock()
-	defer t.slowRequestsMu.Unlock()
-	t.results.SlowRequests = append(t.results.SlowRequests, req)
+	t.slowRequestsCh <- req
 }
 
 // monitor provides real-time progress updates
@@ -320,16 +377,15 @@ func (t *Tester) monitor(ctx context.Context) {
 }
 
 // calculateResults computes final statistics
+// Note: Safe to access results directly since aggregator has finished
 func (t *Tester) calculateResults(duration time.Duration) {
 	t.results.Duration = duration.String()
 
 	// Calculate response time statistics
-	t.responseTimesMu.Lock()
 	responseTimes := make([]time.Duration, len(t.results.ResponseTimes))
 	for i, entry := range t.results.ResponseTimes {
 		responseTimes[i] = entry.ResponseTime
 	}
-	t.responseTimesMu.Unlock()
 
 	if len(responseTimes) > 0 {
 		sort.Slice(responseTimes, func(i, j int) bool {
@@ -357,9 +413,7 @@ func (t *Tester) calculateResults(duration time.Duration) {
 	}
 
 	// Sort slow requests by response time
-	t.slowRequestsMu.Lock()
 	sort.Slice(t.results.SlowRequests, func(i, j int) bool {
 		return t.results.SlowRequests[i].ResponseTime > t.results.SlowRequests[j].ResponseTime
 	})
-	t.slowRequestsMu.Unlock()
 }
