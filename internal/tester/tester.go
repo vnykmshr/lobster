@@ -127,47 +127,46 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 func (t *Tester) aggregator(wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	// Track which channels are still open
+	validationsClosed := false
+	errorsClosed := false
+	responseTimesClosed := false
+	slowRequestsClosed := false
+
 	for {
+		// Exit when all channels are closed
+		if validationsClosed && errorsClosed && responseTimesClosed && slowRequestsClosed {
+			return
+		}
+
 		select {
 		case validation, ok := <-t.validationsCh:
 			if !ok {
-				// All channels closed, drain remaining
-				t.drainChannels()
-				return
+				validationsClosed = true
+				continue
 			}
 			t.results.URLValidations = append(t.results.URLValidations, validation)
 
-		case errInfo := <-t.errorsCh:
+		case errInfo, ok := <-t.errorsCh:
+			if !ok {
+				errorsClosed = true
+				continue
+			}
 			t.results.Errors = append(t.results.Errors, errInfo)
 
-		case responseTime := <-t.responseTimesCh:
+		case responseTime, ok := <-t.responseTimesCh:
+			if !ok {
+				responseTimesClosed = true
+				continue
+			}
 			t.results.ResponseTimes = append(t.results.ResponseTimes, responseTime)
 
-		case slowReq := <-t.slowRequestsCh:
-			t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
-		}
-	}
-}
-
-// drainChannels ensures all remaining results are collected after channels are closed
-func (t *Tester) drainChannels() {
-	for {
-		select {
-		case errInfo, ok := <-t.errorsCh:
-			if ok {
-				t.results.Errors = append(t.results.Errors, errInfo)
-			}
-		case responseTime, ok := <-t.responseTimesCh:
-			if ok {
-				t.results.ResponseTimes = append(t.results.ResponseTimes, responseTime)
-			}
 		case slowReq, ok := <-t.slowRequestsCh:
-			if ok {
-				t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
+			if !ok {
+				slowRequestsClosed = true
+				continue
 			}
-		default:
-			// All channels drained
-			return
+			t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
 		}
 	}
 }
