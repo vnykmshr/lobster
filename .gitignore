@@ -18,7 +18,7 @@ vendor/
 go.work
 
 # Build output
-lobster
+/lobster
 dist/
 build/
 
