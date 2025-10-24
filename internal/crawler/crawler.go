@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vnykmshr/webstress/internal/domain"
+	"github.com/vnykmshr/lobster/internal/domain"
 )
 
 // Crawler handles URL discovery and link extraction

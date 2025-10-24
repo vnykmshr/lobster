@@ -1,6 +1,6 @@
-# WebStress Roadmap
+# Lobster Roadmap
 
-This roadmap outlines the phased approach to maturing WebStress into a production-ready, feature-rich web stress testing tool. Each phase builds on the previous, delivering incremental value while maintaining backward compatibility.
+This roadmap outlines the phased approach to maturing Lobster into a production-ready, feature-rich web stress testing tool. Each phase builds on the previous, delivering incremental value while maintaining backward compatibility.
 
 ## Guiding Principles
 
@@ -192,7 +192,7 @@ Production-grade features for teams and continuous testing.
 **Status**: 💡 Vision
 
 ### Goals
-Build a vibrant ecosystem around WebStress.
+Build a vibrant ecosystem around Lobster.
 
 ### Deliverables
 
@@ -349,8 +349,8 @@ Pre-1.0 versioning (0.x.x):
 
 We welcome community input on this roadmap!
 
-- 💬 **Discuss**: [GitHub Discussions](https://github.com/vnykmshr/webstress/discussions)
-- 🐛 **Issues**: [Feature Requests](https://github.com/vnykmshr/webstress/issues/new?labels=enhancement)
+- 💬 **Discuss**: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- 🐛 **Issues**: [Feature Requests](https://github.com/vnykmshr/lobster/issues/new?labels=enhancement)
 - 🤝 **Contribute**: See [CONTRIBUTING.md](../CONTRIBUTING.md)
 - 📧 **Contact**: Open an issue or discussion
 

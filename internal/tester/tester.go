@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/vnykmshr/goflow/pkg/ratelimit/bucket"
-	"github.com/vnykmshr/webstress/internal/crawler"
-	"github.com/vnykmshr/webstress/internal/domain"
+	"github.com/vnykmshr/lobster/internal/crawler"
+	"github.com/vnykmshr/lobster/internal/domain"
 )
 
 // Tester orchestrates the stress testing process

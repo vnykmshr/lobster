@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vnykmshr/webstress/internal/config"
-	"github.com/vnykmshr/webstress/internal/domain"
-	"github.com/vnykmshr/webstress/internal/reporter"
-	"github.com/vnykmshr/webstress/internal/tester"
-	"github.com/vnykmshr/webstress/internal/validator"
+	"github.com/vnykmshr/lobster/internal/config"
+	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/vnykmshr/lobster/internal/reporter"
+	"github.com/vnykmshr/lobster/internal/tester"
+	"github.com/vnykmshr/lobster/internal/validator"
 )
 
 const version = "0.1.0"
@@ -40,7 +40,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("WebStress v%s\n", version)
+		fmt.Printf("Lobster v%s\n", version)
 		return
 	}
 
@@ -228,10 +228,10 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 }
 
 func showHelpMessage() {
-	fmt.Println(`WebStress - Intelligent Web Stress Testing Tool
+	fmt.Println(`Lobster - Intelligent Web Stress Testing Tool
 
 USAGE:
-    webstress [OPTIONS]
+    lobster [OPTIONS]
 
 OPTIONS:
     -config string
@@ -247,7 +247,7 @@ OPTIONS:
     -rate float
         Requests per second limit (default: 2.0)
     -user-agent string
-        User agent string (default: WebStress/1.0)
+        User agent string (default: Lobster/1.0)
     -follow-links
         Follow links found in pages (default: true)
     -max-depth int
@@ -265,22 +265,22 @@ OPTIONS:
 
 EXAMPLES:
     # Basic stress test
-    webstress -url http://localhost:3000
+    lobster -url http://localhost:3000
 
     # High concurrency test with custom duration
-    webstress -url http://localhost:3000 -concurrency 50 -duration 5m
+    lobster -url http://localhost:3000 -concurrency 50 -duration 5m
 
     # Test with rate limiting and output
-    webstress -url http://localhost:3000 -rate 10 -output results.json
+    lobster -url http://localhost:3000 -rate 10 -output results.json
 
     # Use configuration file
-    webstress -config myconfig.json
+    lobster -config myconfig.json
 
     # Compare against competitor
-    webstress -url http://localhost:3000 -compare "Ghost"
+    lobster -url http://localhost:3000 -compare "Ghost"
 
     # Quick validation test
-    webstress -url http://localhost:3000 -duration 30s -concurrency 5
+    lobster -url http://localhost:3000 -duration 30s -concurrency 5
 
 CONFIGURATION FILE EXAMPLE:
     {
@@ -289,7 +289,7 @@ CONFIGURATION FILE EXAMPLE:
       "duration": "5m",
       "timeout": "30s",
       "rate": 10.0,
-      "user_agent": "WebStress/1.0",
+      "user_agent": "Lobster/1.0",
       "follow_links": true,
       "max_depth": 3,
       "output_file": "results.json",
@@ -305,11 +305,11 @@ CONFIGURATION FILE EXAMPLE:
     }
 
 DOCUMENTATION:
-    Full documentation: https://github.com/vnykmshr/webstress
-    Report issues: https://github.com/vnykmshr/webstress/issues
+    Full documentation: https://github.com/vnykmshr/lobster
+    Report issues: https://github.com/vnykmshr/lobster/issues
 
 VERSION:
-    WebStress v` + version + `
+    Lobster v` + version + `
 
 Made with ❤️  for developers who value simplicity and power`)
 }

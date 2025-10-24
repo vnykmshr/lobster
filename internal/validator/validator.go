@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vnykmshr/webstress/internal/domain"
+	"github.com/vnykmshr/lobster/internal/domain"
 )
 
 // Validator validates test results against performance targets

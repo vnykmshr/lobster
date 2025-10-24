@@ -4,10 +4,10 @@
   "duration": "5m",
   "timeout": "30s",
   "rate": 10.0,
-  "user_agent": "WebStress/1.0",
+  "user_agent": "Lobster/1.0",
   "follow_links": true,
   "max_depth": 3,
-  "output_file": "webstress-results.json",
+  "output_file": "lobster-results.json",
   "verbose": false,
   "performance_targets": {
     "requests_per_second": 100,

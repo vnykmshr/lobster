@@ -36,7 +36,7 @@ func DefaultConfig() Config {
 		Duration:           "2m",
 		Timeout:            "30s",
 		Rate:               2.0,
-		UserAgent:          "WebStress/1.0",
+		UserAgent:          "Lobster/1.0",
 		FollowLinks:        true,
 		MaxDepth:           3,
 		OutputFile:         "",

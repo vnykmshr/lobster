@@ -1,6 +1,6 @@
-# Contributing to WebStress
+# Contributing to Lobster
 
-Thank you for your interest in contributing to WebStress! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Lobster! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -31,8 +31,8 @@ Be respectful, inclusive, and professional in all interactions. We're building a
 
 1. **Fork the repository**
    ```bash
-   git clone https://github.com/vnykmshr/webstress.git
-   cd webstress
+   git clone https://github.com/vnykmshr/lobster.git
+   cd lobster
    ```
 
 2. **Create a feature branch**
@@ -86,7 +86,7 @@ Be respectful, inclusive, and professional in all interactions. We're building a
 
 ### Architecture
 
-WebStress follows Clean Architecture:
+Lobster follows Clean Architecture:
 
 ```
 internal/
@@ -142,8 +142,8 @@ docs(readme): update installation instructions
 ## Project Structure
 
 ```
-webstress/
-├── cmd/webstress/          # CLI entry point
+lobster/
+├── cmd/lobster/          # CLI entry point
 ├── internal/
 │   ├── domain/            # Core business entities
 │   ├── crawler/           # URL discovery
@@ -158,8 +158,8 @@ webstress/
 
 ## Getting Help
 
-- 💬 [GitHub Discussions](https://github.com/vnykmshr/webstress/discussions)
-- 🐛 [Issue Tracker](https://github.com/vnykmshr/webstress/issues)
+- 💬 [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- 🐛 [Issue Tracker](https://github.com/vnykmshr/lobster/issues)
 - 📖 [Documentation](docs/)
 
 ## Recognition
@@ -169,4 +169,4 @@ Contributors will be recognized in:
 - Release notes for significant contributions
 - GitHub contributors page
 
-Thank you for making WebStress better! 🚀
+Thank you for making Lobster better! 🚀

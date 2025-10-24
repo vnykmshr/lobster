@@ -1,17 +1,17 @@
-# WebStress Development Guide
+# Lobster Development Guide
 
 ## Project Overview
 
-**WebStress** is an intelligent web application stress testing tool that automatically discovers URLs through crawling and validates performance under concurrent load.
+**Lobster** is an intelligent web application stress testing tool that automatically discovers URLs through crawling and validates performance under concurrent load.
 
-**Repository**: https://github.com/vnykmshr/webstress
+**Repository**: https://github.com/vnykmshr/lobster
 **Version**: 0.1.0
 **Created**: 2025-10-24
 **License**: MIT
 
 ## Quick Context
 
-### What Makes WebStress Different
+### What Makes Lobster Different
 
 1. **Crawler-First**: Automatically discovers URLs (unlike ab, wrk, hey, vegeta)
 2. **Validation-Focused**: Pass/fail criteria vs raw metrics (unlike k6, JMeter)
@@ -28,7 +28,7 @@ Graduated from `markgo/examples/stress-test` on 2025-10-24. Originally built to 
 
 ```
 ┌─────────────────────────────────────────────┐
-│          cmd/webstress (CLI)                │
+│          cmd/lobster (CLI)                │
 │  - Flag parsing                             │
 │  - Orchestration                            │
 └─────────────────────────────────────────────┘
@@ -87,16 +87,16 @@ Graduated from `markgo/examples/stress-test` on 2025-10-24. Originally built to 
 ### Setup
 
 ```bash
-cd /Users/vmx/workspace/gocode/src/github.com/vnykmshr/webstress
+cd /Users/vmx/workspace/gocode/src/github.com/vnykmshr/lobster
 
 # Install dependencies
 go mod download
 
 # Build
-go build -o webstress cmd/webstress/main.go
+go build -o lobster cmd/lobster/main.go
 
 # Run
-./webstress -url http://localhost:3000
+./lobster -url http://localhost:3000
 ```
 
 ### Testing
@@ -119,15 +119,15 @@ go test -v ./...
 
 ```bash
 # Development build
-go build -o webstress cmd/webstress/main.go
+go build -o lobster cmd/lobster/main.go
 
 # Production build (optimized)
-go build -ldflags="-s -w" -o webstress cmd/webstress/main.go
+go build -ldflags="-s -w" -o lobster cmd/lobster/main.go
 
 # Cross-compilation
-GOOS=linux GOARCH=amd64 go build -o webstress-linux cmd/webstress/main.go
-GOOS=darwin GOARCH=arm64 go build -o webstress-macos cmd/webstress/main.go
-GOOS=windows GOARCH=amd64 go build -o webstress.exe cmd/webstress/main.go
+GOOS=linux GOARCH=amd64 go build -o lobster-linux cmd/lobster/main.go
+GOOS=darwin GOARCH=arm64 go build -o lobster-macos cmd/lobster/main.go
+GOOS=windows GOARCH=amd64 go build -o lobster.exe cmd/lobster/main.go
 ```
 
 ## Key Implementation Details
@@ -239,7 +239,7 @@ Authentication and real-world scenarios:
    func (r *Reporter) GenerateCSV(outputPath string) error
    ```
 
-2. Update `cmd/webstress/main.go` to detect format and call method
+2. Update `cmd/lobster/main.go` to detect format and call method
 
 3. Add example to `docs/QUICKSTART.md`
 
@@ -306,7 +306,7 @@ func TestStressTest(t *testing.T) {
     server := httptest.NewServer(...)
     defer server.Close()
 
-    // Run webstress against test server
+    // Run lobster against test server
     // Verify results
 }
 ```
@@ -321,7 +321,7 @@ Following Semantic Versioning (semver):
 
 ### Release Checklist
 
-1. Update version in `cmd/webstress/main.go`
+1. Update version in `cmd/lobster/main.go`
 2. Update `CHANGELOG.md` with changes
 3. Update `docs/ROADMAP.md` to mark completed items
 4. Run all tests: `go test ./...`
@@ -335,8 +335,8 @@ Following Semantic Versioning (semver):
 ## Important File Locations
 
 ```
-webstress/
-├── cmd/webstress/main.go              # CLI entry point - 337 lines
+lobster/
+├── cmd/lobster/main.go              # CLI entry point - 337 lines
 ├── internal/
 │   ├── domain/
 │   │   ├── entities.go                # Core types - 95 lines
@@ -407,7 +407,7 @@ test(validator): add percentile calculation tests
 ### Enable Verbose Logging
 
 ```bash
-./webstress -url http://localhost:3000 -verbose
+./lobster -url http://localhost:3000 -verbose
 ```
 
 ### Common Issues
@@ -429,7 +429,7 @@ test(validator): add percentile calculation tests
 
 ## Next Session TODO
 
-When resuming work on WebStress:
+When resuming work on Lobster:
 
 1. **Immediate**:
    - [ ] Create GitHub repository
@@ -457,8 +457,8 @@ When resuming work on WebStress:
 
 ## Contact & Contribution
 
-- **Issues**: https://github.com/vnykmshr/webstress/issues
-- **Discussions**: https://github.com/vnykmshr/webstress/discussions
+- **Issues**: https://github.com/vnykmshr/lobster/issues
+- **Discussions**: https://github.com/vnykmshr/lobster/discussions
 - **Pull Requests**: Welcome! See CONTRIBUTING.md
 
 ---

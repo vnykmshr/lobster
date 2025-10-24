@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vnykmshr/webstress/internal/domain"
+	"github.com/vnykmshr/lobster/internal/domain"
 )
 
 // Reporter generates test reports in various formats
@@ -231,7 +231,7 @@ func (r *Reporter) getHTMLTemplate() string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebStress Test Report</title>
+    <title>Lobster Test Report</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; background: #f5f7fa; }
@@ -272,7 +272,7 @@ func (r *Reporter) getHTMLTemplate() string {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 WebStress Test Report</h1>
+            <h1>🚀 Lobster Test Report</h1>
             <p>Generated on {{.Timestamp}} | Duration: {{.Duration}}</p>
         </div>
 

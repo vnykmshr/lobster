@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/vnykmshr/webstress/internal/domain"
+	"github.com/vnykmshr/lobster/internal/domain"
 )
 
 // Loader handles loading configuration from various sources

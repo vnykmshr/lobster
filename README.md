@@ -1,12 +1,12 @@
-# WebStress
+# Lobster
 
 > The stress tester that thinks like a user
 
-**WebStress** is an intelligent web application stress testing tool that automatically discovers your application's URLs through crawling and validates performance under concurrent load. Unlike traditional stress testing tools that require manual URL configuration, WebStress explores your application like a real user would, providing comprehensive performance validation with zero configuration.
+**Lobster** is an intelligent web application stress testing tool that automatically discovers your application's URLs through crawling and validates performance under concurrent load. Unlike traditional stress testing tools that require manual URL configuration, Lobster explores your application like a real user would, providing comprehensive performance validation with zero configuration.
 
-## Why WebStress?
+## Why Lobster?
 
-Traditional stress testing tools are either too simple (just hammer a single endpoint) or too complex (requiring extensive scripting and setup). WebStress fills the gap:
+Traditional stress testing tools are either too simple (just hammer a single endpoint) or too complex (requiring extensive scripting and setup). Lobster fills the gap:
 
 - **Zero Configuration**: Point it at your app and go
 - **Intelligent Discovery**: Automatically crawls and discovers all URLs
@@ -70,15 +70,15 @@ Traditional stress testing tools are either too simple (just hammer a single end
 ### Installation
 
 ```bash
-go install github.com/vnykmshr/webstress/cmd/webstress@latest
+go install github.com/vnykmshr/lobster/cmd/lobster@latest
 ```
 
 Or clone and build:
 
 ```bash
-git clone https://github.com/vnykmshr/webstress.git
-cd webstress
-go build -o webstress cmd/webstress/main.go
+git clone https://github.com/vnykmshr/lobster.git
+cd lobster
+go build -o lobster cmd/lobster/main.go
 ```
 
 ### Basic Usage
@@ -86,10 +86,10 @@ go build -o webstress cmd/webstress/main.go
 Test your local application:
 
 ```bash
-webstress -url http://localhost:3000
+lobster -url http://localhost:3000
 ```
 
-That's it! WebStress will:
+That's it! Lobster will:
 1. Crawl your application starting from the base URL
 2. Discover all linked pages
 3. Generate concurrent requests
@@ -101,13 +101,13 @@ That's it! WebStress will:
 **Development Validation**
 ```bash
 # Quick check during development
-webstress -url http://localhost:3000 -duration 30s -concurrency 5
+lobster -url http://localhost:3000 -duration 30s -concurrency 5
 ```
 
 **Pre-Deployment Testing**
 ```bash
 # Comprehensive test before release
-webstress -url https://staging.example.com \
+lobster -url https://staging.example.com \
   -duration 10m \
   -concurrency 25 \
   -max-depth 5 \
@@ -117,7 +117,7 @@ webstress -url https://staging.example.com \
 **CI/CD Integration**
 ```bash
 # Run in CI pipeline
-webstress -url http://localhost:3000 \
+lobster -url http://localhost:3000 \
   -duration 2m \
   -concurrency 10 \
   -output ci-results.json
@@ -126,7 +126,7 @@ webstress -url http://localhost:3000 \
 **High-Load Stress Testing**
 ```bash
 # Simulate high traffic
-webstress -url https://example.com \
+lobster -url https://example.com \
   -concurrency 100 \
   -duration 15m \
   -rate 50 \
@@ -144,7 +144,7 @@ webstress -url https://example.com \
 | `-duration` | `2m` | Test duration (e.g., 30s, 5m, 1h) |
 | `-timeout` | `30s` | Request timeout |
 | `-rate` | `2.0` | Requests per second limit |
-| `-user-agent` | `WebStress/1.0` | User agent string |
+| `-user-agent` | `Lobster/1.0` | User agent string |
 | `-follow-links` | `true` | Follow links found in pages |
 | `-max-depth` | `3` | Maximum crawl depth |
 | `-output` | - | Output file for results (JSON) |
@@ -162,7 +162,7 @@ Create a JSON configuration file for complex scenarios:
   "duration": "5m",
   "timeout": "30s",
   "rate": 10.0,
-  "user_agent": "WebStress/1.0",
+  "user_agent": "Lobster/1.0",
   "follow_links": true,
   "max_depth": 3,
   "output_file": "results.json",
@@ -180,7 +180,7 @@ Create a JSON configuration file for complex scenarios:
 
 Use with:
 ```bash
-webstress -config config.json
+lobster -config config.json
 ```
 
 ## How It Works
@@ -214,11 +214,11 @@ webstress -config config.json
 
 ## Architecture
 
-WebStress follows **Clean Architecture** principles:
+Lobster follows **Clean Architecture** principles:
 
 ```
-webstress/
-├── cmd/webstress/          # Application entry point
+lobster/
+├── cmd/lobster/          # Application entry point
 ├── internal/
 │   ├── domain/            # Core entities and interfaces
 │   ├── crawler/           # URL discovery logic
@@ -364,8 +364,8 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ```bash
 # Clone the repository
-git clone https://github.com/vnykmshr/webstress.git
-cd webstress
+git clone https://github.com/vnykmshr/lobster.git
+cd lobster
 
 # Install dependencies
 go mod download
@@ -374,10 +374,10 @@ go mod download
 go test ./...
 
 # Build
-go build -o webstress cmd/webstress/main.go
+go build -o lobster cmd/lobster/main.go
 
 # Run locally
-./webstress -url http://localhost:3000
+./lobster -url http://localhost:3000
 ```
 
 ## License
@@ -393,8 +393,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Support
 
 - 📖 Documentation: [docs/](docs/)
-- 🐛 Bug Reports: [GitHub Issues](https://github.com/vnykmshr/webstress/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/vnykmshr/webstress/discussions)
+- 🐛 Bug Reports: [GitHub Issues](https://github.com/vnykmshr/lobster/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
 - 🌟 Star the project if you find it useful!
 
 ---

@@ -1,4 +1,4 @@
-module github.com/vnykmshr/webstress
+module github.com/vnykmshr/lobster
 
 go 1.25.2
 

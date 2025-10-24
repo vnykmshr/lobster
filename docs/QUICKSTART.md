@@ -1,21 +1,21 @@
-# WebStress Quick Start Guide
+# Lobster Quick Start Guide
 
-Get up and running with WebStress in 5 minutes.
+Get up and running with Lobster in 5 minutes.
 
 ## Installation
 
 ### From Source
 
 ```bash
-git clone https://github.com/vnykmshr/webstress.git
-cd webstress
-go build -o webstress cmd/webstress/main.go
+git clone https://github.com/vnykmshr/lobster.git
+cd lobster
+go build -o lobster cmd/lobster/main.go
 ```
 
 ### Using Go Install
 
 ```bash
-go install github.com/vnykmshr/webstress/cmd/webstress@latest
+go install github.com/vnykmshr/lobster/cmd/lobster@latest
 ```
 
 ## Basic Usage
@@ -25,7 +25,7 @@ go install github.com/vnykmshr/webstress/cmd/webstress@latest
 Start your application on port 3000, then run:
 
 ```bash
-./webstress -url http://localhost:3000
+./lobster -url http://localhost:3000
 ```
 
 This will:
@@ -37,7 +37,7 @@ This will:
 ### 2. Customize the Test
 
 ```bash
-./webstress \
+./lobster \
   -url http://localhost:3000 \
   -duration 5m \
   -concurrency 10 \
@@ -87,7 +87,7 @@ Create a configuration file `config.json`:
 
 Run with config:
 ```bash
-./webstress -config config.json
+./lobster -config config.json
 ```
 
 ## Common Use Cases
@@ -96,14 +96,14 @@ Run with config:
 
 Quick check during development:
 ```bash
-./webstress -url http://localhost:3000 -duration 30s -concurrency 5
+./lobster -url http://localhost:3000 -duration 30s -concurrency 5
 ```
 
 ### Pre-Deployment Testing
 
 Comprehensive test before release:
 ```bash
-./webstress \
+./lobster \
   -url https://staging.example.com \
   -duration 10m \
   -concurrency 25 \
@@ -115,7 +115,7 @@ Comprehensive test before release:
 
 Simulate high traffic:
 ```bash
-./webstress \
+./lobster \
   -url https://example.com \
   -concurrency 100 \
   -duration 15m \
@@ -135,7 +135,7 @@ APP_PID=$!
 sleep 5
 
 # Run stress test
-./webstress \
+./lobster \
   -url http://localhost:3000 \
   -duration 2m \
   -concurrency 10 \
@@ -195,14 +195,14 @@ Overall: 4/4 targets met (100.0%)
 
 Begin with low concurrency and short duration:
 ```bash
-./webstress -url http://localhost:3000 -concurrency 2 -duration 30s
+./lobster -url http://localhost:3000 -concurrency 2 -duration 30s
 ```
 
 ### 2. Respect Server Limits
 
 Use rate limiting to avoid overwhelming your server:
 ```bash
-./webstress -url http://localhost:3000 -rate 2.0
+./lobster -url http://localhost:3000 -rate 2.0
 ```
 
 ### 3. Monitor Your Application
@@ -260,7 +260,7 @@ If you see failures:
 ## Getting Help
 
 - 📖 [Full Documentation](../README.md)
-- 💬 [GitHub Discussions](https://github.com/vnykmshr/webstress/discussions)
-- 🐛 [Report Issues](https://github.com/vnykmshr/webstress/issues)
+- 💬 [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- 🐛 [Report Issues](https://github.com/vnykmshr/lobster/issues)
 
 Happy stress testing! 🚀
