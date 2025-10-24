@@ -23,8 +23,8 @@ dist/
 build/
 
 # Test results and reports
-*.json
-*.html
+/*.json
+/*.html
 *.csv
 results/
 reports/

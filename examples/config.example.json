@@ -1,0 +1,20 @@
+{
+  "base_url": "http://localhost:3000",
+  "concurrency": 10,
+  "duration": "5m",
+  "timeout": "30s",
+  "rate": 10.0,
+  "user_agent": "WebStress/1.0",
+  "follow_links": true,
+  "max_depth": 3,
+  "output_file": "webstress-results.json",
+  "verbose": false,
+  "performance_targets": {
+    "requests_per_second": 100,
+    "avg_response_time_ms": 50,
+    "p95_response_time_ms": 100,
+    "p99_response_time_ms": 200,
+    "success_rate": 99.0,
+    "error_rate": 1.0
+  }
+}
