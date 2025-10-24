@@ -4,6 +4,7 @@ package tester
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -181,23 +182,13 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint
 	// Process response body for link discovery
 	if t.config.FollowLinks && task.Depth < t.config.MaxDepth &&
 		strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
-		body := make([]byte, 0, 64*1024) // Limit to 64KB for link extraction
-		buffer := make([]byte, 4096)
-		totalRead := 0
-
-		for totalRead < 64*1024 {
-			n, readErr := resp.Body.Read(buffer)
-			if n > 0 {
-				if totalRead+n > 64*1024 {
-					body = append(body, buffer[:64*1024-totalRead]...)
-					break
-				}
-				body = append(body, buffer[:n]...)
-				totalRead += n
-			}
-			if readErr != nil {
-				break
-			}
+		// Limit body reading to 64KB for link extraction
+		limitedReader := io.LimitReader(resp.Body, 64*1024)
+		body, readErr := io.ReadAll(limitedReader)
+		if readErr != nil && readErr != io.EOF {
+			t.logger.Debug("Error reading response body for link extraction",
+				"url", task.URL,
+				"error", readErr)
 		}
 
 		links := t.crawler.ExtractLinks(string(body))

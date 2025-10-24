@@ -36,7 +36,8 @@ func (r *Reporter) GenerateHTML(outputPath string) error {
 		return fmt.Errorf("parsing template: %w", err)
 	}
 
-	file, err := os.Create(outputPath)
+	// Create file with secure permissions (0o600) consistent with JSON output
+	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("creating output file: %w", err)
 	}
