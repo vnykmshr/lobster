@@ -125,7 +125,7 @@ func (t *Tester) worker(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // processURL performs a single URL request and records results
-func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint:gocyclo // Complex but cohesive request handling logic
+func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 	// Apply rate limiting using goflow's token bucket
 	if t.rateLimiter != nil {
 		if err := t.rateLimiter.Wait(ctx); err != nil {
@@ -136,23 +136,10 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint
 		}
 	}
 
-	startTime := time.Now()
 	atomic.AddInt64(&t.results.TotalRequests, 1)
 
-	// Create request
-	req, err := http.NewRequestWithContext(ctx, "GET", task.URL, http.NoBody)
-	if err != nil {
-		t.recordError(task.URL, fmt.Sprintf("creating request: %v", err), task.Depth)
-		atomic.AddInt64(&t.results.FailedRequests, 1)
-		return
-	}
-
-	// Set user agent
-	req.Header.Set("User-Agent", t.config.UserAgent)
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-
-	// Make request
-	resp, err := t.client.Do(req)
+	// Make HTTP request
+	resp, responseTime, err := t.makeHTTPRequest(ctx, task.URL)
 	if err != nil {
 		t.recordError(task.URL, fmt.Sprintf("making request: %v", err), task.Depth)
 		atomic.AddInt64(&t.results.FailedRequests, 1)
@@ -162,7 +149,6 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint
 		_ = resp.Body.Close()
 	}()
 
-	responseTime := time.Since(startTime)
 	atomic.AddInt64(&t.results.SuccessfulRequests, 1)
 
 	// Record response time
@@ -179,28 +165,8 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint
 		IsValid:       resp.StatusCode >= 200 && resp.StatusCode < 400,
 	}
 
-	// Process response body for link discovery
-	if t.config.FollowLinks && task.Depth < t.config.MaxDepth &&
-		strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
-		// Limit body reading to 64KB for link extraction
-		limitedReader := io.LimitReader(resp.Body, 64*1024)
-		body, readErr := io.ReadAll(limitedReader)
-		if readErr != nil && readErr != io.EOF {
-			t.logger.Debug("Error reading response body for link extraction",
-				"url", task.URL,
-				"error", readErr)
-		}
-
-		links := t.crawler.ExtractLinks(string(body))
-		validation.LinksFound = len(links)
-
-		// Add new URLs to queue
-		for _, link := range links {
-			if t.crawler.AddURL(link, task.Depth+1, t.urlQueue) {
-				t.results.URLsDiscovered = t.crawler.GetDiscoveredCount()
-			}
-		}
-	}
+	// Discover links if configured
+	validation.LinksFound = t.discoverLinksFromResponse(resp, task)
 
 	// Record slow requests (>2 seconds)
 	if responseTime > 2*time.Second {
@@ -216,6 +182,60 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) { //nolint
 		"response_time", responseTime,
 		"depth", task.Depth,
 		"links_found", validation.LinksFound)
+}
+
+// makeHTTPRequest creates and executes an HTTP request, returning the response and duration
+func (t *Tester) makeHTTPRequest(ctx context.Context, url string) (*http.Response, time.Duration, error) {
+	startTime := time.Now()
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return nil, 0, fmt.Errorf("creating request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("User-Agent", t.config.UserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+
+	// Execute request
+	resp, err := t.client.Do(req)
+	responseTime := time.Since(startTime)
+
+	if err != nil {
+		return nil, responseTime, err
+	}
+
+	return resp, responseTime, nil
+}
+
+// discoverLinksFromResponse extracts links from HTML responses and adds them to the crawl queue
+func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLTask) int {
+	// Only process HTML responses
+	if !t.config.FollowLinks || task.Depth >= t.config.MaxDepth ||
+		!strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+		return 0
+	}
+
+	// Limit body reading to 64KB for link extraction
+	limitedReader := io.LimitReader(resp.Body, 64*1024)
+	body, readErr := io.ReadAll(limitedReader)
+	if readErr != nil && readErr != io.EOF {
+		t.logger.Debug("Error reading response body for link extraction",
+			"url", task.URL,
+			"error", readErr)
+		return 0
+	}
+
+	// Extract and queue links
+	links := t.crawler.ExtractLinks(string(body))
+	for _, link := range links {
+		if t.crawler.AddURL(link, task.Depth+1, t.urlQueue) {
+			t.results.URLsDiscovered = t.crawler.GetDiscoveredCount()
+		}
+	}
+
+	return len(links)
 }
 
 // recordError records an error encountered during testing
