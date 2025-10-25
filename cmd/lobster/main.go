@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -67,6 +68,11 @@ func main() {
 	})
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Validate and enforce rate limit safety
+	if err := validateRateLimit(&cfg.Rate); err != nil {
+		log.Fatalf("Rate limit validation failed: %v", err)
 	}
 
 	// Setup logger
@@ -258,6 +264,8 @@ OPTIONS:
         Request timeout (default: 30s)
     -rate float
         Requests per second limit (default: 2.0)
+        Safety: Minimum 0.1 req/s enforced
+        Warning prompt for rates < 1.0 req/s
     -user-agent string
         User agent string (default: Lobster/1.0)
     -follow-links
@@ -328,4 +336,67 @@ VERSION:
     Lobster v` + version + `
 
 Made with ❤️  for developers who value simplicity and power`)
+}
+
+// validateRateLimit enforces safe rate limiting to prevent accidental DoS
+func validateRateLimit(rate *float64) error {
+	const (
+		minRate  = 0.1  // Minimum allowed rate (requests per second)
+		warnRate = 1.0  // Warning threshold for low rates
+	)
+
+	// Rate of 0 means no rate limiting (unlimited)
+	if *rate == 0 {
+		fmt.Fprintf(os.Stderr, "\n⚠️  WARNING: No rate limiting enabled (rate=0)\n")
+		fmt.Fprintf(os.Stderr, "   This will send requests as fast as possible.\n")
+		fmt.Fprintf(os.Stderr, "   Make sure you have permission to test the target server.\n\n")
+		return nil
+	}
+
+	// Enforce minimum rate to prevent extremely slow tests
+	if *rate > 0 && *rate < minRate {
+		fmt.Fprintf(os.Stderr, "\n⚠️  WARNING: Rate %.2f req/s is below minimum %.2f req/s\n", *rate, minRate)
+		fmt.Fprintf(os.Stderr, "   Adjusting to minimum rate of %.2f req/s\n", minRate)
+		fmt.Fprintf(os.Stderr, "   Rationale: Extremely low rates may indicate configuration error.\n\n")
+		*rate = minRate
+		return nil
+	}
+
+	// Warn about very low rates and prompt for confirmation if interactive
+	if *rate < warnRate {
+		fmt.Fprintf(os.Stderr, "\n⚠️  WARNING: Low rate limit detected (%.2f req/s)\n", *rate)
+		fmt.Fprintf(os.Stderr, "   This will send requests very slowly:\n")
+		fmt.Fprintf(os.Stderr, "   - %.2f requests per second\n", *rate)
+		fmt.Fprintf(os.Stderr, "   - ~%.0f requests per minute\n", *rate*60)
+		fmt.Fprintf(os.Stderr, "   - Test may take a long time to complete\n\n")
+
+		// If interactive terminal, prompt for confirmation
+		if isInteractiveTerminal() {
+			fmt.Fprintf(os.Stderr, "   Do you want to continue with this rate? (y/N): ")
+			reader := bufio.NewReader(os.Stdin)
+			response, err := reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("reading confirmation: %w", err)
+			}
+			response = strings.TrimSpace(strings.ToLower(response))
+			if response != "y" && response != "yes" {
+				return fmt.Errorf("test cancelled by user")
+			}
+			fmt.Fprintf(os.Stderr, "\n")
+		} else {
+			fmt.Fprintf(os.Stderr, "   Continuing in non-interactive mode...\n\n")
+		}
+	}
+
+	return nil
+}
+
+// isInteractiveTerminal checks if the program is running in an interactive terminal
+func isInteractiveTerminal() bool {
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	// Check if stdin is a character device (terminal) rather than a pipe or file
+	return (fileInfo.Mode() & os.ModeCharDevice) != 0
 }
