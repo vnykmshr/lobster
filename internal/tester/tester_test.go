@@ -555,10 +555,8 @@ func TestAggregator_ChannelCollection(t *testing.T) {
 	slowReq := domain.SlowRequest{URL: "http://slow.com", ResponseTime: 3 * time.Second}
 	tester.slowRequestsCh <- slowReq
 
-	// Give aggregator time to process
-	time.Sleep(100 * time.Millisecond)
-
-	// Close channels and wait for aggregator
+	// Close channels to signal completion and wait for aggregator to finish
+	// The aggregator processes all channel data until channels are closed
 	close(tester.validationsCh)
 	close(tester.errorsCh)
 	close(tester.responseTimesCh)
@@ -602,10 +600,7 @@ func TestRecordError(t *testing.T) {
 	// Record error
 	tester.recordError("http://test.com", "test error message", 1)
 
-	// Give aggregator time to process
-	time.Sleep(50 * time.Millisecond)
-
-	// Close channels
+	// Close channels to signal completion and wait for aggregator to finish
 	close(tester.validationsCh)
 	close(tester.errorsCh)
 	close(tester.responseTimesCh)
