@@ -668,230 +668,162 @@ func TestRun_ConcurrentWorkers(t *testing.T) {
 // TestRun_WithRateLimiting skipped - takes 2+ seconds to run reliably
 // Rate limiter functionality tested in unit test instead
 
-func TestApplyAuthentication_BasicAuth(t *testing.T) {
-	config := testConfig("http://example.com")
-	config.Auth = &domain.AuthConfig{
-		Type:     "basic",
-		Username: "testuser",
-		Password: "testpass",
-	}
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	err = tester.applyAuthentication(req)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	// Check Authorization header
-	auth := req.Header.Get("Authorization")
-	if !strings.HasPrefix(auth, "Basic ") {
-		t.Errorf("Expected Basic auth header, got: %s", auth)
-	}
-}
-
-func TestApplyAuthentication_BearerToken(t *testing.T) {
-	config := testConfig("http://example.com")
-	config.Auth = &domain.AuthConfig{
-		Type:  "bearer",
-		Token: "test-token-123",
-	}
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	err = tester.applyAuthentication(req)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	// Check Authorization header
-	auth := req.Header.Get("Authorization")
-	expected := "Bearer test-token-123"
-	if auth != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, auth)
-	}
-}
-
-func TestApplyAuthentication_Cookie(t *testing.T) {
-	config := testConfig("http://example.com")
-	config.Auth = &domain.AuthConfig{
-		Type: "cookie",
-		Cookies: map[string]string{
-			"session": "abc123",
-			"csrf":    "xyz789",
+func TestApplyAuthentication(t *testing.T) {
+	tests := []struct {
+		name           string
+		authConfig     *domain.AuthConfig
+		wantErr        bool
+		errContains    string
+		checkAuth      func(t *testing.T, req *http.Request)
+	}{
+		{
+			name: "Basic Auth",
+			authConfig: &domain.AuthConfig{
+				Type:     "basic",
+				Username: "testuser",
+				Password: "testpass",
+			},
+			wantErr: false,
+			checkAuth: func(t *testing.T, req *http.Request) {
+				auth := req.Header.Get("Authorization")
+				if !strings.HasPrefix(auth, "Basic ") {
+					t.Errorf("Expected Basic auth header, got: %s", auth)
+				}
+			},
+		},
+		{
+			name: "Bearer Token",
+			authConfig: &domain.AuthConfig{
+				Type:  "bearer",
+				Token: "test-token-123",
+			},
+			wantErr: false,
+			checkAuth: func(t *testing.T, req *http.Request) {
+				auth := req.Header.Get("Authorization")
+				expected := "Bearer test-token-123"
+				if auth != expected {
+					t.Errorf("Expected '%s', got '%s'", expected, auth)
+				}
+			},
+		},
+		{
+			name: "Cookie Auth",
+			authConfig: &domain.AuthConfig{
+				Type: "cookie",
+				Cookies: map[string]string{
+					"session": "abc123",
+					"csrf":    "xyz789",
+				},
+			},
+			wantErr: false,
+			checkAuth: func(t *testing.T, req *http.Request) {
+				cookies := req.Cookies()
+				if len(cookies) != 2 {
+					t.Fatalf("Expected 2 cookies, got %d", len(cookies))
+				}
+				cookieMap := make(map[string]string)
+				for _, cookie := range cookies {
+					cookieMap[cookie.Name] = cookie.Value
+				}
+				if cookieMap["session"] != "abc123" {
+					t.Errorf("Expected session cookie 'abc123', got '%s'", cookieMap["session"])
+				}
+				if cookieMap["csrf"] != "xyz789" {
+					t.Errorf("Expected csrf cookie 'xyz789', got '%s'", cookieMap["csrf"])
+				}
+			},
+		},
+		{
+			name: "Custom Headers",
+			authConfig: &domain.AuthConfig{
+				Type: "header",
+				Headers: map[string]string{
+					"X-API-Key":     "secret-key",
+					"X-Custom-Auth": "custom-value",
+				},
+			},
+			wantErr: false,
+			checkAuth: func(t *testing.T, req *http.Request) {
+				if req.Header.Get("X-API-Key") != "secret-key" {
+					t.Errorf("Expected X-API-Key 'secret-key', got '%s'", req.Header.Get("X-API-Key"))
+				}
+				if req.Header.Get("X-Custom-Auth") != "custom-value" {
+					t.Errorf("Expected X-Custom-Auth 'custom-value', got '%s'", req.Header.Get("X-Custom-Auth"))
+				}
+			},
+		},
+		{
+			name:       "No Auth",
+			authConfig: nil,
+			wantErr:    false,
+			checkAuth: func(t *testing.T, req *http.Request) {
+				if req.Header.Get("Authorization") != "" {
+					t.Error("Expected no Authorization header")
+				}
+			},
+		},
+		{
+			name: "Auto-detect Basic",
+			authConfig: &domain.AuthConfig{
+				Type:     "", // Empty type, should auto-detect
+				Username: "user",
+				Password: "pass",
+			},
+			wantErr: false,
+			checkAuth: func(t *testing.T, req *http.Request) {
+				auth := req.Header.Get("Authorization")
+				if !strings.HasPrefix(auth, "Basic ") {
+					t.Errorf("Expected auto-detected Basic auth, got: %s", auth)
+				}
+			},
+		},
+		{
+			name: "Invalid Type",
+			authConfig: &domain.AuthConfig{
+				Type: "invalid-type",
+			},
+			wantErr:     true,
+			errContains: "unknown authentication type",
+			checkAuth:   nil,
 		},
 	}
-	logger := testLogger()
 
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := testConfig("http://example.com")
+			config.Auth = tt.authConfig
+			logger := testLogger()
 
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
+			tester, err := New(config, logger)
+			if err != nil {
+				t.Fatalf("Failed to create tester: %v", err)
+			}
 
-	err = tester.applyAuthentication(req)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+			req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
 
-	// Check cookies
-	cookies := req.Cookies()
-	if len(cookies) != 2 {
-		t.Fatalf("Expected 2 cookies, got %d", len(cookies))
-	}
+			err = tester.applyAuthentication(req)
 
-	cookieMap := make(map[string]string)
-	for _, cookie := range cookies {
-		cookieMap[cookie.Name] = cookie.Value
-	}
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("Expected error, got none")
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("Expected error containing '%s', got: %v", tt.errContains, err)
+				}
+				return
+			}
 
-	if cookieMap["session"] != "abc123" {
-		t.Errorf("Expected session cookie 'abc123', got '%s'", cookieMap["session"])
-	}
-	if cookieMap["csrf"] != "xyz789" {
-		t.Errorf("Expected csrf cookie 'xyz789', got '%s'", cookieMap["csrf"])
-	}
-}
+			if err != nil {
+				t.Fatalf("Expected no error, got: %v", err)
+			}
 
-func TestApplyAuthentication_CustomHeader(t *testing.T) {
-	config := testConfig("http://example.com")
-	config.Auth = &domain.AuthConfig{
-		Type: "header",
-		Headers: map[string]string{
-			"X-API-Key":    "secret-key",
-			"X-Custom-Auth": "custom-value",
-		},
-	}
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	err = tester.applyAuthentication(req)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	// Check custom headers
-	if req.Header.Get("X-API-Key") != "secret-key" {
-		t.Errorf("Expected X-API-Key 'secret-key', got '%s'", req.Header.Get("X-API-Key"))
-	}
-	if req.Header.Get("X-Custom-Auth") != "custom-value" {
-		t.Errorf("Expected X-Custom-Auth 'custom-value', got '%s'", req.Header.Get("X-Custom-Auth"))
-	}
-}
-
-func TestApplyAuthentication_NoAuth(t *testing.T) {
-	config := testConfig("http://example.com")
-	config.Auth = nil // No auth configured
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	err = tester.applyAuthentication(req)
-	if err != nil {
-		t.Fatalf("Expected no error for nil auth, got: %v", err)
-	}
-
-	// Verify no auth headers were added
-	if req.Header.Get("Authorization") != "" {
-		t.Error("Expected no Authorization header")
-	}
-}
-
-func TestApplyAuthentication_AutoDetect(t *testing.T) {
-	// Test auto-detection when type is empty
-	config := testConfig("http://example.com")
-	config.Auth = &domain.AuthConfig{
-		Type:     "", // Empty type, should auto-detect
-		Username: "user",
-		Password: "pass",
-	}
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	err = tester.applyAuthentication(req)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	// Should have applied basic auth
-	auth := req.Header.Get("Authorization")
-	if !strings.HasPrefix(auth, "Basic ") {
-		t.Errorf("Expected auto-detected Basic auth, got: %s", auth)
-	}
-}
-
-func TestApplyAuthentication_InvalidType(t *testing.T) {
-	config := testConfig("http://example.com")
-	config.Auth = &domain.AuthConfig{
-		Type: "invalid-type",
-	}
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "http://example.com", http.NoBody)
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
-	err = tester.applyAuthentication(req)
-	if err == nil {
-		t.Fatal("Expected error for invalid auth type, got none")
-	}
-
-	if !strings.Contains(err.Error(), "unknown authentication type") {
-		t.Errorf("Expected 'unknown authentication type' error, got: %v", err)
+			if tt.checkAuth != nil {
+				tt.checkAuth(t, req)
+			}
+		})
 	}
 }
 
