@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -561,23 +562,39 @@ func (t *Tester) addSlowRequest(req domain.SlowRequest) {
 
 // monitor provides real-time progress updates
 func (t *Tester) monitor(ctx context.Context) {
+	// Recover from panics to prevent monitor failure from crashing the test
+	defer func() {
+		if r := recover(); r != nil {
+			// Fallback to stderr if logger is unavailable
+			fmt.Fprintf(os.Stderr, "Monitor panic recovered: %v\n", r)
+		}
+	}()
+
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
+			// Safely load atomic counters
 			total := atomic.LoadInt64(&t.results.TotalRequests)
 			successful := atomic.LoadInt64(&t.results.SuccessfulRequests)
 			failed := atomic.LoadInt64(&t.results.FailedRequests)
 			discovered := t.results.URLsDiscovered
 
-			t.logger.Info("Progress update",
-				"total_requests", total,
-				"successful_requests", successful,
-				"failed_requests", failed,
-				"urls_discovered", discovered,
-				"queue_size", len(t.urlQueue))
+			// Try logger first, fall back to stderr if it fails
+			if t.logger != nil {
+				t.logger.Info("Progress update",
+					"total_requests", total,
+					"successful_requests", successful,
+					"failed_requests", failed,
+					"urls_discovered", discovered,
+					"queue_size", len(t.urlQueue))
+			} else {
+				// Fallback if logger is nil
+				fmt.Fprintf(os.Stderr, "Progress: %d requests (%d successful, %d failed), %d URLs discovered, queue: %d\n",
+					total, successful, failed, discovered, len(t.urlQueue))
+			}
 		case <-ctx.Done():
 			return
 		}
