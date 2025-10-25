@@ -59,10 +59,16 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		}
 	}
 
+	// Use configured queue size, default to 10000 if not set
+	queueSize := config.QueueSize
+	if queueSize <= 0 {
+		queueSize = 10000
+	}
+
 	return &Tester{
 		config:          config,
 		client:          &http.Client{Timeout: config.RequestTimeout},
-		urlQueue:        make(chan domain.URLTask, 10000),
+		urlQueue:        make(chan domain.URLTask, queueSize),
 		results:         &domain.TestResults{URLValidations: make([]domain.URLValidation, 0)},
 		rateLimiter:     rateLimiter,
 		crawler:         crawlerInstance,

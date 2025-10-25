@@ -32,6 +32,7 @@ func main() {
 		userAgent         = flag.String("user-agent", "", "User agent string")
 		followLinks       = flag.Bool("follow-links", true, "Follow links found in pages")
 		maxDepth          = flag.Int("max-depth", 0, "Maximum crawl depth")
+		queueSize         = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
 		showVersion       = flag.Bool("version", false, "Show version information")
@@ -60,6 +61,7 @@ func main() {
 		userAgent:   *userAgent,
 		followLinks: *followLinks,
 		maxDepth:    *maxDepth,
+		queueSize:   *queueSize,
 		outputFile:  *outputFile,
 		verbose:     *verbose,
 	})
@@ -101,6 +103,7 @@ func main() {
 		UserAgent:      cfg.UserAgent,
 		FollowLinks:    cfg.FollowLinks,
 		MaxDepth:       cfg.MaxDepth,
+		QueueSize:      cfg.QueueSize,
 		Rate:           cfg.Rate,
 	}
 
@@ -176,6 +179,7 @@ type configOptions struct {
 	rate        float64
 	concurrency int
 	maxDepth    int
+	queueSize   int
 	followLinks bool
 	verbose     bool
 }
@@ -220,6 +224,9 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	if opts.maxDepth != 0 {
 		cfg.MaxDepth = opts.maxDepth
 	}
+	if opts.queueSize != 0 {
+		cfg.QueueSize = opts.queueSize
+	}
 	if opts.outputFile != "" {
 		cfg.OutputFile = opts.outputFile
 	}
@@ -257,6 +264,9 @@ OPTIONS:
         Follow links found in pages (default: true)
     -max-depth int
         Maximum crawl depth (default: 3)
+    -queue-size int
+        URL queue buffer size (default: 10000)
+        Memory usage: ~8 bytes per queue slot
     -output string
         Output file for results (JSON format)
     -verbose
@@ -297,6 +307,7 @@ CONFIGURATION FILE EXAMPLE:
       "user_agent": "Lobster/1.0",
       "follow_links": true,
       "max_depth": 3,
+      "queue_size": 10000,
       "output_file": "results.json",
       "verbose": false,
       "performance_targets": {

@@ -14,6 +14,7 @@ type Config struct {
 	Rate               float64            `json:"rate"`
 	Concurrency        int                `json:"concurrency"`
 	MaxDepth           int                `json:"max_depth"`
+	QueueSize          int                `json:"queue_size"`
 	FollowLinks        bool               `json:"follow_links"`
 	Verbose            bool               `json:"verbose"`
 }
@@ -26,6 +27,7 @@ type TesterConfig struct {
 	Rate           float64
 	Concurrency    int
 	MaxDepth       int
+	QueueSize      int
 	FollowLinks    bool
 }
 
@@ -40,6 +42,7 @@ func DefaultConfig() Config {
 		UserAgent:          "Lobster/1.0",
 		FollowLinks:        true,
 		MaxDepth:           3,
+		QueueSize:          10000, // ~80KB per 10K queue (assuming 8 bytes per URLTask)
 		OutputFile:         "",
 		Verbose:            false,
 		PerformanceTargets: DefaultPerformanceTargets(),

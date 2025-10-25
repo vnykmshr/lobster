@@ -95,6 +95,66 @@ func TestNew_WithRateLimiter(t *testing.T) {
 	}
 }
 
+func TestNew_ConfigurableQueueSize(t *testing.T) {
+	tests := []struct {
+		name              string
+		queueSize         int
+		expectedCapacity  int
+		description       string
+	}{
+		{
+			name:             "Custom queue size",
+			queueSize:        5000,
+			expectedCapacity: 5000,
+			description:      "Should use configured queue size",
+		},
+		{
+			name:             "Default when zero",
+			queueSize:        0,
+			expectedCapacity: 10000,
+			description:      "Should default to 10000 when QueueSize is 0",
+		},
+		{
+			name:             "Default when negative",
+			queueSize:        -100,
+			expectedCapacity: 10000,
+			description:      "Should default to 10000 when QueueSize is negative",
+		},
+		{
+			name:             "Small queue size",
+			queueSize:        100,
+			expectedCapacity: 100,
+			description:      "Should allow small queue sizes",
+		},
+		{
+			name:             "Large queue size",
+			queueSize:        50000,
+			expectedCapacity: 50000,
+			description:      "Should allow large queue sizes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := testConfig("http://example.com")
+			config.QueueSize = tt.queueSize
+			logger := testLogger()
+
+			tester, err := New(config, logger)
+			if err != nil {
+				t.Fatalf("Expected no error, got: %v", err)
+			}
+
+			// Verify queue capacity by checking we can send expectedCapacity items
+			actualCapacity := cap(tester.urlQueue)
+			if actualCapacity != tt.expectedCapacity {
+				t.Errorf("%s: expected capacity %d, got %d",
+					tt.description, tt.expectedCapacity, actualCapacity)
+			}
+		})
+	}
+}
+
 func TestMakeHTTPRequest_Success(t *testing.T) {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
