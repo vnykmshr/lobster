@@ -380,6 +380,26 @@ go build -o lobster cmd/lobster/main.go
 ./lobster -url http://localhost:3000
 ```
 
+## Responsible Use
+
+⚠️ **Important**: Lobster is a powerful testing tool that must be used responsibly and ethically.
+
+**Key Requirements:**
+- ✅ **Only test systems you own** or have explicit written permission to test
+- ✅ **Respect robots.txt** directives (enabled by default)
+- ✅ **Configure appropriate rate limits** to avoid service disruption
+- ✅ **Handle test reports securely** - they may contain sensitive URLs and data
+
+**Unauthorized load testing may be illegal** and can result in:
+- Criminal prosecution under computer fraud laws
+- Civil lawsuits for damages
+- Termination of employment or contracts
+- Permanent legal and professional consequences
+
+Please read our comprehensive [Responsible Use Guidelines](RESPONSIBLE_USE.md) before using Lobster.
+
+**When in doubt, get it in writing.** A simple email confirmation from a system owner can protect you legally.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
