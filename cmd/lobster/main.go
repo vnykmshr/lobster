@@ -34,6 +34,7 @@ func main() {
 		followLinks       = flag.Bool("follow-links", true, "Follow links found in pages")
 		maxDepth          = flag.Int("max-depth", 0, "Maximum crawl depth")
 		queueSize         = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
+		respect429        = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
 		showVersion       = flag.Bool("version", false, "Show version information")
@@ -63,6 +64,7 @@ func main() {
 		followLinks: *followLinks,
 		maxDepth:    *maxDepth,
 		queueSize:   *queueSize,
+		respect429:  *respect429,
 		outputFile:  *outputFile,
 		verbose:     *verbose,
 	})
@@ -110,6 +112,7 @@ func main() {
 		FollowLinks:    cfg.FollowLinks,
 		MaxDepth:       cfg.MaxDepth,
 		QueueSize:      cfg.QueueSize,
+		Respect429:     cfg.Respect429,
 		Rate:           cfg.Rate,
 	}
 
@@ -187,6 +190,7 @@ type configOptions struct {
 	maxDepth    int
 	queueSize   int
 	followLinks bool
+	respect429  bool
 	verbose     bool
 }
 
@@ -237,6 +241,7 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 		cfg.OutputFile = opts.outputFile
 	}
 	cfg.FollowLinks = opts.followLinks
+	cfg.Respect429 = opts.respect429
 	cfg.Verbose = opts.verbose
 
 	// Merge with defaults for any missing values
@@ -275,6 +280,9 @@ OPTIONS:
     -queue-size int
         URL queue buffer size (default: 10000)
         Memory usage: ~8 bytes per queue slot
+    -respect-429
+        Respect HTTP 429 with exponential backoff (default: true)
+        Backoff: 1s, 2s, 4s, 8s, 16s (max 30s)
     -output string
         Output file for results (JSON format)
     -verbose

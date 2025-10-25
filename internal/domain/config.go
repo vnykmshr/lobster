@@ -16,6 +16,7 @@ type Config struct {
 	MaxDepth           int                `json:"max_depth"`
 	QueueSize          int                `json:"queue_size"`
 	FollowLinks        bool               `json:"follow_links"`
+	Respect429         bool               `json:"respect_429"`
 	Verbose            bool               `json:"verbose"`
 }
 
@@ -29,6 +30,7 @@ type TesterConfig struct {
 	MaxDepth       int
 	QueueSize      int
 	FollowLinks    bool
+	Respect429     bool // Respect HTTP 429 (Too Many Requests) with exponential backoff
 }
 
 // DefaultConfig returns a sensible default configuration
@@ -43,6 +45,7 @@ func DefaultConfig() Config {
 		FollowLinks:        true,
 		MaxDepth:           3,
 		QueueSize:          10000, // ~80KB per 10K queue (assuming 8 bytes per URLTask)
+		Respect429:         true,  // Respect rate limiting by default
 		OutputFile:         "",
 		Verbose:            false,
 		PerformanceTargets: DefaultPerformanceTargets(),

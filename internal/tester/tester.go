@@ -209,8 +209,8 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 
 	atomic.AddInt64(&t.results.TotalRequests, 1)
 
-	// Make HTTP request
-	resp, responseTime, err := t.makeHTTPRequest(ctx, task.URL)
+	// Make HTTP request with 429 retry logic
+	resp, responseTime, err := t.makeHTTPRequestWithRetry(ctx, task.URL)
 	if err != nil {
 		t.recordError(task.URL, fmt.Sprintf("making request: %v", err), task.Depth)
 		atomic.AddInt64(&t.results.FailedRequests, 1)
@@ -253,6 +253,66 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 		"response_time", responseTime,
 		"depth", task.Depth,
 		"links_found", validation.LinksFound)
+}
+
+// makeHTTPRequestWithRetry wraps makeHTTPRequest with exponential backoff retry for 429 responses
+func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*http.Response, time.Duration, error) {
+	const (
+		maxRetries    = 4              // Max retry attempts for 429
+		initialBackoff = 1 * time.Second
+		maxBackoff    = 30 * time.Second
+	)
+
+	var totalDuration time.Duration
+	backoff := initialBackoff
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		resp, duration, err := t.makeHTTPRequest(ctx, url)
+		totalDuration += duration
+
+		// If request failed (network error, etc), return error immediately
+		if err != nil {
+			return nil, totalDuration, err
+		}
+
+		// If not 429 or Respect429 is disabled, return response
+		if resp.StatusCode != http.StatusTooManyRequests || !t.config.Respect429 {
+			return resp, totalDuration, nil
+		}
+
+		// Close the 429 response body before retrying
+		_ = resp.Body.Close()
+
+		// If this was the last attempt, return the 429 response
+		if attempt == maxRetries {
+			// Re-make request one final time to return a valid response object
+			return t.makeHTTPRequest(ctx, url)
+		}
+
+		// Log the backoff
+		t.logger.Info("Received 429 Too Many Requests, backing off",
+			"url", util.SanitizeURLDefault(url),
+			"attempt", attempt+1,
+			"backoff", backoff,
+			"max_retries", maxRetries)
+
+		// Wait for backoff period or context cancellation
+		select {
+		case <-time.After(backoff):
+			// Continue to next attempt
+		case <-ctx.Done():
+			return nil, totalDuration, ctx.Err()
+		}
+
+		// Exponential backoff: double each time, cap at maxBackoff
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+	}
+
+	// Should never reach here, but return error just in case
+	return nil, totalDuration, fmt.Errorf("exceeded max retries for 429")
 }
 
 // makeHTTPRequest creates and executes an HTTP request, returning the response and duration
