@@ -36,6 +36,7 @@ func main() {
 		queueSize         = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
 		respect429        = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
 		dryRun            = flag.Bool("dry-run", false, "Discover URLs without making test requests")
+		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "⚠️  INSECURE: Skip TLS certificate verification")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
 		showVersion       = flag.Bool("version", false, "Show version information")
@@ -64,25 +65,26 @@ func main() {
 
 	// Load configuration
 	cfg, err := loadConfiguration(*configPath, &configOptions{
-		baseURL:      *baseURL,
-		concurrency:  *concurrency,
-		duration:     *duration,
-		timeout:      *timeout,
-		rate:         *rate,
-		userAgent:    *userAgent,
-		followLinks:  *followLinks,
-		maxDepth:     *maxDepth,
-		queueSize:    *queueSize,
-		respect429:   *respect429,
-		dryRun:       *dryRun,
-		outputFile:   *outputFile,
-		verbose:      *verbose,
-		authType:     *authType,
-		authUsername: *authUsername,
-		authPassword: *authPassword,
-		authToken:    *authToken,
-		authCookie:   *authCookie,
-		authHeader:   *authHeader,
+		baseURL:            *baseURL,
+		concurrency:        *concurrency,
+		duration:           *duration,
+		timeout:            *timeout,
+		rate:               *rate,
+		userAgent:          *userAgent,
+		followLinks:        *followLinks,
+		maxDepth:           *maxDepth,
+		queueSize:          *queueSize,
+		respect429:         *respect429,
+		dryRun:             *dryRun,
+		insecureSkipVerify: *insecureSkipVerify,
+		outputFile:         *outputFile,
+		verbose:            *verbose,
+		authType:           *authType,
+		authUsername:       *authUsername,
+		authPassword:       *authPassword,
+		authToken:          *authToken,
+		authCookie:         *authCookie,
+		authHeader:         *authHeader,
 	})
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
@@ -91,6 +93,25 @@ func main() {
 	// Validate and enforce rate limit safety
 	if err := validateRateLimit(&cfg.Rate); err != nil {
 		log.Fatalf("Rate limit validation failed: %v", err)
+	}
+
+	// Warn about insecure TLS skip verify
+	if cfg.InsecureSkipVerify {
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
+		fmt.Fprintf(os.Stderr, "║                       ⚠️  SECURITY WARNING ⚠️                        ║\n")
+		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
+		fmt.Fprintf(os.Stderr, "║  TLS certificate verification is DISABLED (-insecure-skip-verify)  ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  This makes you vulnerable to man-in-the-middle attacks!          ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  Only use this for:                                                ║\n")
+		fmt.Fprintf(os.Stderr, "║    • Testing with self-signed certificates                         ║\n")
+		fmt.Fprintf(os.Stderr, "║    • Internal development environments                             ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  NEVER use this in production or with untrusted networks!         ║\n")
+		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
+		fmt.Fprintf(os.Stderr, "\n")
 	}
 
 	// Setup logger
@@ -121,17 +142,18 @@ func main() {
 
 	// Initialize stress tester
 	testerConfig := domain.TesterConfig{
-		BaseURL:        cfg.BaseURL,
-		Concurrency:    cfg.Concurrency,
-		RequestTimeout: requestTimeout,
-		UserAgent:      cfg.UserAgent,
-		Auth:           cfg.Auth,
-		FollowLinks:    cfg.FollowLinks,
-		MaxDepth:       cfg.MaxDepth,
-		QueueSize:      cfg.QueueSize,
-		Respect429:     cfg.Respect429,
-		DryRun:         cfg.DryRun,
-		Rate:           cfg.Rate,
+		BaseURL:            cfg.BaseURL,
+		Concurrency:        cfg.Concurrency,
+		RequestTimeout:     requestTimeout,
+		UserAgent:          cfg.UserAgent,
+		Auth:               cfg.Auth,
+		FollowLinks:        cfg.FollowLinks,
+		MaxDepth:           cfg.MaxDepth,
+		QueueSize:          cfg.QueueSize,
+		Respect429:         cfg.Respect429,
+		DryRun:             cfg.DryRun,
+		InsecureSkipVerify: cfg.InsecureSkipVerify,
+		Rate:               cfg.Rate,
 	}
 
 	stressTester, err := tester.New(testerConfig, logger)
@@ -198,25 +220,26 @@ func main() {
 }
 
 type configOptions struct {
-	baseURL      string
-	duration     string
-	timeout      string
-	userAgent    string
-	outputFile   string
-	rate         float64
-	concurrency  int
-	maxDepth     int
-	queueSize    int
-	followLinks  bool
-	respect429   bool
-	dryRun       bool
-	verbose      bool
-	authType     string
-	authUsername string
-	authPassword string
-	authToken    string
-	authCookie   string
-	authHeader   string
+	baseURL            string
+	duration           string
+	timeout            string
+	userAgent          string
+	outputFile         string
+	rate               float64
+	concurrency        int
+	maxDepth           int
+	queueSize          int
+	followLinks        bool
+	respect429         bool
+	dryRun             bool
+	verbose            bool
+	insecureSkipVerify bool
+	authType           string
+	authUsername       string
+	authPassword       string
+	authToken          string
+	authCookie         string
+	authHeader         string
 }
 
 func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, error) {
@@ -269,6 +292,7 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	cfg.Respect429 = opts.respect429
 	cfg.DryRun = opts.dryRun
 	cfg.Verbose = opts.verbose
+	cfg.InsecureSkipVerify = opts.insecureSkipVerify
 
 	// Build authentication configuration from CLI flags
 	if opts.authType != "" || opts.authUsername != "" || opts.authToken != "" ||
@@ -343,6 +367,10 @@ OPTIONS:
     -dry-run
         Discover URLs without making test requests
         Shows estimated test scope and discovered URLs
+    -insecure-skip-verify
+        ⚠️  INSECURE: Skip TLS certificate verification
+        Use ONLY for testing with self-signed certificates
+        Makes you vulnerable to man-in-the-middle attacks!
     -output string
         Output file for results (JSON format)
     -verbose

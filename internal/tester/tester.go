@@ -3,6 +3,7 @@ package tester
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log/slog"
@@ -66,9 +67,24 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		queueSize = 10000
 	}
 
+	// Create HTTP client with optional TLS skip verify
+	httpClient := &http.Client{
+		Timeout: config.RequestTimeout,
+	}
+
+	// Configure TLS if InsecureSkipVerify is enabled
+	if config.InsecureSkipVerify {
+		logger.Warn("⚠️  INSECURE: TLS certificate verification is disabled. Use only for testing with self-signed certificates!")
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, //nolint:gosec // Intentionally insecure for testing self-signed certs
+			},
+		}
+	}
+
 	return &Tester{
 		config:          config,
-		client:          &http.Client{Timeout: config.RequestTimeout},
+		client:          httpClient,
 		urlQueue:        make(chan domain.URLTask, queueSize),
 		results:         &domain.TestResults{URLValidations: make([]domain.URLValidation, 0)},
 		rateLimiter:     rateLimiter,

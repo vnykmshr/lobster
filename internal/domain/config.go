@@ -31,21 +31,23 @@ type Config struct {
 	Respect429         bool               `json:"respect_429"`
 	DryRun             bool               `json:"dry_run"`
 	Verbose            bool               `json:"verbose"`
+	InsecureSkipVerify bool               `json:"insecure_skip_verify"`
 }
 
 // TesterConfig represents the configuration for the stress tester
 type TesterConfig struct {
-	RequestTimeout time.Duration
-	Auth           *AuthConfig
-	BaseURL        string
-	UserAgent      string
-	Rate           float64
-	Concurrency    int
-	MaxDepth       int
-	QueueSize      int
-	FollowLinks    bool
-	Respect429     bool // Respect HTTP 429 (Too Many Requests) with exponential backoff
-	DryRun         bool // Discover URLs without making actual test requests
+	RequestTimeout     time.Duration
+	Auth               *AuthConfig
+	BaseURL            string
+	UserAgent          string
+	Rate               float64
+	Concurrency        int
+	MaxDepth           int
+	QueueSize          int
+	FollowLinks        bool
+	Respect429         bool // Respect HTTP 429 (Too Many Requests) with exponential backoff
+	DryRun             bool // Discover URLs without making actual test requests
+	InsecureSkipVerify bool // Skip TLS certificate validation (INSECURE - for testing only)
 }
 
 // DefaultConfig returns a sensible default configuration
