@@ -37,6 +37,7 @@ func main() {
 		respect429        = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
 		dryRun            = flag.Bool("dry-run", false, "Discover URLs without making test requests")
 		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "⚠️  INSECURE: Skip TLS certificate verification")
+		ignoreRobots      = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
 		showVersion       = flag.Bool("version", false, "Show version information")
@@ -77,6 +78,7 @@ func main() {
 		respect429:         *respect429,
 		dryRun:             *dryRun,
 		insecureSkipVerify: *insecureSkipVerify,
+		ignoreRobots:       *ignoreRobots,
 		outputFile:         *outputFile,
 		verbose:            *verbose,
 		authType:           *authType,
@@ -110,6 +112,25 @@ func main() {
 		fmt.Fprintf(os.Stderr, "║    • Internal development environments                             ║\n")
 		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
 		fmt.Fprintf(os.Stderr, "║  NEVER use this in production or with untrusted networks!         ║\n")
+		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
+		fmt.Fprintf(os.Stderr, "\n")
+	}
+
+	// Warn about ignoring robots.txt
+	if cfg.IgnoreRobots {
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
+		fmt.Fprintf(os.Stderr, "║                        ⚠️  ETHICAL WARNING ⚠️                        ║\n")
+		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
+		fmt.Fprintf(os.Stderr, "║  Ignoring robots.txt directives (-ignore-robots)                   ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  You are bypassing the website owner's crawling preferences!      ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  Only use this when:                                               ║\n")
+		fmt.Fprintf(os.Stderr, "║    • You OWN the website being tested                              ║\n")
+		fmt.Fprintf(os.Stderr, "║    • You have explicit written permission                          ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  Unauthorized testing may violate terms of service or laws!       ║\n")
 		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
 		fmt.Fprintf(os.Stderr, "\n")
 	}
@@ -153,6 +174,7 @@ func main() {
 		Respect429:         cfg.Respect429,
 		DryRun:             cfg.DryRun,
 		InsecureSkipVerify: cfg.InsecureSkipVerify,
+		IgnoreRobots:       cfg.IgnoreRobots,
 		Rate:               cfg.Rate,
 	}
 
@@ -234,6 +256,7 @@ type configOptions struct {
 	dryRun             bool
 	verbose            bool
 	insecureSkipVerify bool
+	ignoreRobots       bool
 	authType           string
 	authUsername       string
 	authPassword       string
@@ -293,6 +316,7 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	cfg.DryRun = opts.dryRun
 	cfg.Verbose = opts.verbose
 	cfg.InsecureSkipVerify = opts.insecureSkipVerify
+	cfg.IgnoreRobots = opts.ignoreRobots
 
 	// Build authentication configuration from CLI flags
 	if opts.authType != "" || opts.authUsername != "" || opts.authToken != "" ||
@@ -371,6 +395,10 @@ OPTIONS:
         ⚠️  INSECURE: Skip TLS certificate verification
         Use ONLY for testing with self-signed certificates
         Makes you vulnerable to man-in-the-middle attacks!
+    -ignore-robots
+        Ignore robots.txt directives (use responsibly)
+        Only use if you OWN the website or have explicit permission
+        Bypassing robots.txt may violate terms of service
     -output string
         Output file for results (JSON format)
     -verbose

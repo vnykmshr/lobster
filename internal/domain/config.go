@@ -32,6 +32,7 @@ type Config struct {
 	DryRun             bool               `json:"dry_run"`
 	Verbose            bool               `json:"verbose"`
 	InsecureSkipVerify bool               `json:"insecure_skip_verify"`
+	IgnoreRobots       bool               `json:"ignore_robots"`
 }
 
 // TesterConfig represents the configuration for the stress tester
@@ -48,6 +49,7 @@ type TesterConfig struct {
 	Respect429         bool // Respect HTTP 429 (Too Many Requests) with exponential backoff
 	DryRun             bool // Discover URLs without making actual test requests
 	InsecureSkipVerify bool // Skip TLS certificate validation (INSECURE - for testing only)
+	IgnoreRobots       bool // Ignore robots.txt directives (use responsibly)
 }
 
 // DefaultConfig returns a sensible default configuration

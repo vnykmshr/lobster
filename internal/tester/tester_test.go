@@ -32,6 +32,7 @@ func testConfig(baseURL string) domain.TesterConfig {
 		FollowLinks:    false,
 		MaxDepth:       1,
 		Rate:           0, // No rate limiting for faster tests
+		IgnoreRobots:   true, // Skip robots.txt in tests
 	}
 }
 

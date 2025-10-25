@@ -17,18 +17,20 @@ import (
 	"github.com/vnykmshr/goflow/pkg/ratelimit/bucket"
 	"github.com/vnykmshr/lobster/internal/crawler"
 	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/vnykmshr/lobster/internal/robots"
 	"github.com/vnykmshr/lobster/internal/util"
 )
 
 // Tester orchestrates the stress testing process
 type Tester struct {
-	config      domain.TesterConfig
-	client      *http.Client
-	urlQueue    chan domain.URLTask
-	results     *domain.TestResults
-	rateLimiter bucket.Limiter
-	crawler     *crawler.Crawler
-	logger      *slog.Logger
+	config        domain.TesterConfig
+	client        *http.Client
+	urlQueue      chan domain.URLTask
+	results       *domain.TestResults
+	rateLimiter   bucket.Limiter
+	crawler       *crawler.Crawler
+	robotsParser  *robots.Parser
+	logger        *slog.Logger
 
 	// Result channels for lock-free aggregation
 	validationsCh   chan domain.URLValidation
@@ -82,6 +84,23 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		}
 	}
 
+	// Create robots.txt parser and fetch robots.txt
+	robotsParser := robots.New(config.UserAgent)
+	if !config.IgnoreRobots {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := robotsParser.FetchAndParse(ctx, config.BaseURL); err != nil {
+			logger.Warn("Failed to fetch robots.txt, proceeding with caution", "error", err)
+		} else if robotsParser.RobotsTxtFound() {
+			logger.Info("robots.txt found and parsed successfully")
+		} else {
+			logger.Debug("No robots.txt found, all paths allowed")
+		}
+	} else {
+		logger.Warn("⚠️  Ignoring robots.txt directives. Please ensure you have permission to test this site!")
+	}
+
 	return &Tester{
 		config:          config,
 		client:          httpClient,
@@ -89,6 +108,7 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		results:         &domain.TestResults{URLValidations: make([]domain.URLValidation, 0)},
 		rateLimiter:     rateLimiter,
 		crawler:         crawlerInstance,
+		robotsParser:    robotsParser,
 		logger:          logger,
 		validationsCh:   make(chan domain.URLValidation, 1000),
 		errorsCh:        make(chan domain.ErrorInfo, 1000),
@@ -232,6 +252,14 @@ func (t *Tester) processDryRun(task domain.URLTask) {
 
 // processURL performs a single URL request and records results
 func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
+	// Check robots.txt compliance (unless ignoring)
+	if !t.config.IgnoreRobots && !t.robotsParser.IsAllowed(task.URL) {
+		t.logger.Debug("URL blocked by robots.txt", "url", util.SanitizeURLDefault(task.URL))
+		// Record as skipped, not as an error
+		atomic.AddInt64(&t.results.TotalRequests, 1)
+		return
+	}
+
 	// In dry-run mode, just record the URL without making requests
 	if t.config.DryRun {
 		t.processDryRun(task)
