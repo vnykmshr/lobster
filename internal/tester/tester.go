@@ -354,6 +354,11 @@ func (t *Tester) makeHTTPRequest(ctx context.Context, url string) (*http.Respons
 	req.Header.Set("User-Agent", t.config.UserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 
+	// Apply authentication
+	if err := t.applyAuthentication(req); err != nil {
+		return nil, 0, fmt.Errorf("applying authentication: %w", err)
+	}
+
 	// Execute request
 	resp, err := t.client.Do(req)
 	responseTime := time.Since(startTime)
@@ -363,6 +368,74 @@ func (t *Tester) makeHTTPRequest(ctx context.Context, url string) (*http.Respons
 	}
 
 	return resp, responseTime, nil
+}
+
+// applyAuthentication applies configured authentication to the HTTP request
+func (t *Tester) applyAuthentication(req *http.Request) error {
+	if t.config.Auth == nil {
+		return nil
+	}
+
+	auth := t.config.Auth
+
+	switch auth.Type {
+	case "basic":
+		// Basic authentication: username:password
+		if auth.Username != "" {
+			req.SetBasicAuth(auth.Username, auth.Password)
+			t.logger.Debug("Applied basic authentication", "username", auth.Username)
+		}
+
+	case "bearer":
+		// Bearer token authentication
+		if auth.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+auth.Token)
+			t.logger.Debug("Applied bearer token authentication")
+		}
+
+	case "cookie":
+		// Cookie-based authentication
+		for name, value := range auth.Cookies {
+			req.AddCookie(&http.Cookie{
+				Name:  name,
+				Value: value,
+			})
+			t.logger.Debug("Applied cookie", "name", name)
+		}
+
+	case "header":
+		// Custom header-based authentication
+		for name, value := range auth.Headers {
+			req.Header.Set(name, value)
+			t.logger.Debug("Applied custom header", "name", name)
+		}
+
+	case "":
+		// No authentication type specified, check for individual fields
+		if auth.Username != "" {
+			req.SetBasicAuth(auth.Username, auth.Password)
+		} else if auth.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+auth.Token)
+		}
+		if len(auth.Cookies) > 0 {
+			for name, value := range auth.Cookies {
+				req.AddCookie(&http.Cookie{
+					Name:  name,
+					Value: value,
+				})
+			}
+		}
+		if len(auth.Headers) > 0 {
+			for name, value := range auth.Headers {
+				req.Header.Set(name, value)
+			}
+		}
+
+	default:
+		return fmt.Errorf("unknown authentication type: %s", auth.Type)
+	}
+
+	return nil
 }
 
 // discoverLinksFromResponse extracts links from HTML responses and adds them to the crawl queue

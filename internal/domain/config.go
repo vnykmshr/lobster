@@ -3,9 +3,21 @@ package domain
 
 import "time"
 
+// AuthConfig represents authentication configuration for HTTP requests
+type AuthConfig struct {
+	Type        string            `json:"type"`         // "basic", "bearer", "cookie", "header"
+	Username    string            `json:"username"`     // For basic auth
+	Password    string            `json:"password"`     // For basic auth
+	Token       string            `json:"token"`        // For bearer token auth
+	Cookies     map[string]string `json:"cookies"`      // For cookie-based auth
+	Headers     map[string]string `json:"headers"`      // For custom header-based auth
+	CookieFile  string            `json:"cookie_file"`  // Path to cookie file (Netscape format)
+}
+
 // Config represents the complete test configuration
 type Config struct {
 	PerformanceTargets PerformanceTargets `json:"performance_targets"`
+	Auth               *AuthConfig        `json:"auth,omitempty"`
 	BaseURL            string             `json:"base_url"`
 	Duration           string             `json:"duration"`
 	Timeout            string             `json:"timeout"`
@@ -24,6 +36,7 @@ type Config struct {
 // TesterConfig represents the configuration for the stress tester
 type TesterConfig struct {
 	RequestTimeout time.Duration
+	Auth           *AuthConfig
 	BaseURL        string
 	UserAgent      string
 	Rate           float64

@@ -41,6 +41,14 @@ func main() {
 		showVersion       = flag.Bool("version", false, "Show version information")
 		showHelp          = flag.Bool("help", false, "Show help message")
 		compareAgainst    = flag.String("compare", "", "Compare against target (e.g., 'Ghost', 'WordPress')")
+
+		// Authentication flags
+		authType          = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
+		authUsername      = flag.String("auth-username", "", "Username for basic authentication")
+		authPassword      = flag.String("auth-password", "", "Password for basic authentication")
+		authToken         = flag.String("auth-token", "", "Bearer token for authentication")
+		authCookie        = flag.String("auth-cookie", "", "Cookie string (name=value)")
+		authHeader        = flag.String("auth-header", "", "Custom header (Name:Value)")
 	)
 	flag.Parse()
 
@@ -56,19 +64,25 @@ func main() {
 
 	// Load configuration
 	cfg, err := loadConfiguration(*configPath, &configOptions{
-		baseURL:     *baseURL,
-		concurrency: *concurrency,
-		duration:    *duration,
-		timeout:     *timeout,
-		rate:        *rate,
-		userAgent:   *userAgent,
-		followLinks: *followLinks,
-		maxDepth:    *maxDepth,
-		queueSize:   *queueSize,
-		respect429:  *respect429,
-		dryRun:      *dryRun,
-		outputFile:  *outputFile,
-		verbose:     *verbose,
+		baseURL:      *baseURL,
+		concurrency:  *concurrency,
+		duration:     *duration,
+		timeout:      *timeout,
+		rate:         *rate,
+		userAgent:    *userAgent,
+		followLinks:  *followLinks,
+		maxDepth:     *maxDepth,
+		queueSize:    *queueSize,
+		respect429:   *respect429,
+		dryRun:       *dryRun,
+		outputFile:   *outputFile,
+		verbose:      *verbose,
+		authType:     *authType,
+		authUsername: *authUsername,
+		authPassword: *authPassword,
+		authToken:    *authToken,
+		authCookie:   *authCookie,
+		authHeader:   *authHeader,
 	})
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
@@ -111,6 +125,7 @@ func main() {
 		Concurrency:    cfg.Concurrency,
 		RequestTimeout: requestTimeout,
 		UserAgent:      cfg.UserAgent,
+		Auth:           cfg.Auth,
 		FollowLinks:    cfg.FollowLinks,
 		MaxDepth:       cfg.MaxDepth,
 		QueueSize:      cfg.QueueSize,
@@ -183,19 +198,25 @@ func main() {
 }
 
 type configOptions struct {
-	baseURL     string
-	duration    string
-	timeout     string
-	userAgent   string
-	outputFile  string
-	rate        float64
-	concurrency int
-	maxDepth    int
-	queueSize   int
-	followLinks bool
-	respect429  bool
-	dryRun      bool
-	verbose     bool
+	baseURL      string
+	duration     string
+	timeout      string
+	userAgent    string
+	outputFile   string
+	rate         float64
+	concurrency  int
+	maxDepth     int
+	queueSize    int
+	followLinks  bool
+	respect429   bool
+	dryRun       bool
+	verbose      bool
+	authType     string
+	authUsername string
+	authPassword string
+	authToken    string
+	authCookie   string
+	authHeader   string
 }
 
 func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, error) {
@@ -249,6 +270,37 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	cfg.DryRun = opts.dryRun
 	cfg.Verbose = opts.verbose
 
+	// Build authentication configuration from CLI flags
+	if opts.authType != "" || opts.authUsername != "" || opts.authToken != "" ||
+	   opts.authCookie != "" || opts.authHeader != "" {
+		authCfg := &domain.AuthConfig{
+			Type:     opts.authType,
+			Username: opts.authUsername,
+			Password: opts.authPassword,
+			Token:    opts.authToken,
+		}
+
+		// Parse cookie string (name=value)
+		if opts.authCookie != "" {
+			authCfg.Cookies = make(map[string]string)
+			parts := strings.SplitN(opts.authCookie, "=", 2)
+			if len(parts) == 2 {
+				authCfg.Cookies[parts[0]] = parts[1]
+			}
+		}
+
+		// Parse header string (Name:Value)
+		if opts.authHeader != "" {
+			authCfg.Headers = make(map[string]string)
+			parts := strings.SplitN(opts.authHeader, ":", 2)
+			if len(parts) == 2 {
+				authCfg.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			}
+		}
+
+		cfg.Auth = authCfg
+	}
+
 	// Merge with defaults for any missing values
 	cfg = loader.MergeWithDefaults(cfg)
 
@@ -297,6 +349,21 @@ OPTIONS:
         Enable verbose logging
     -compare string
         Compare performance against target (e.g., Ghost, WordPress)
+
+AUTHENTICATION OPTIONS:
+    -auth-type string
+        Authentication type: basic, bearer, cookie, header
+    -auth-username string
+        Username for basic authentication
+    -auth-password string
+        Password for basic authentication
+    -auth-token string
+        Bearer token for authentication
+    -auth-cookie string
+        Cookie string in name=value format
+    -auth-header string
+        Custom header in Name:Value format
+
     -version
         Show version information
     -help
@@ -321,6 +388,18 @@ EXAMPLES:
     # Quick validation test
     lobster -url http://localhost:3000 -duration 30s -concurrency 5
 
+    # Test with basic authentication
+    lobster -url http://localhost:3000 -auth-type basic -auth-username admin -auth-password secret
+
+    # Test with bearer token
+    lobster -url http://api.example.com -auth-type bearer -auth-token eyJhbGc...
+
+    # Test with cookie authentication
+    lobster -url http://localhost:3000 -auth-type cookie -auth-cookie "session=abc123"
+
+    # Test with custom header (e.g., API key)
+    lobster -url http://api.example.com -auth-type header -auth-header "X-API-Key:your-key-here"
+
 CONFIGURATION FILE EXAMPLE:
     {
       "base_url": "http://localhost:3000",
@@ -334,6 +413,11 @@ CONFIGURATION FILE EXAMPLE:
       "queue_size": 10000,
       "output_file": "results.json",
       "verbose": false,
+      "auth": {
+        "type": "basic",
+        "username": "admin",
+        "password": "secret"
+      },
       "performance_targets": {
         "requests_per_second": 100,
         "avg_response_time_ms": 50,
