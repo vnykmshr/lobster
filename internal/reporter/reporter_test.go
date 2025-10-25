@@ -8,75 +8,11 @@ import (
 	"time"
 
 	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/vnykmshr/lobster/internal/testutil"
 )
 
-// Test helper to create sample test results
-func sampleResults() *domain.TestResults {
-	return &domain.TestResults{
-		Duration:            "2m30s",
-		URLsDiscovered:      10,
-		TotalRequests:       100,
-		SuccessfulRequests:  95,
-		FailedRequests:      5,
-		AverageResponseTime: "150ms",
-		MinResponseTime:     "50ms",
-		MaxResponseTime:     "500ms",
-		RequestsPerSecond:   0.67,
-		SuccessRate:         95.0,
-		URLValidations: []domain.URLValidation{
-			{
-				URL:           "http://example.com",
-				StatusCode:    200,
-				ResponseTime:  100 * time.Millisecond,
-				ContentLength: 1024,
-				ContentType:   "text/html",
-				LinksFound:    5,
-				Depth:         0,
-				IsValid:       true,
-			},
-			{
-				URL:           "http://example.com/404",
-				StatusCode:    404,
-				ResponseTime:  50 * time.Millisecond,
-				ContentLength: 0,
-				ContentType:   "text/html",
-				LinksFound:    0,
-				Depth:         1,
-				IsValid:       false,
-			},
-		},
-		Errors: []domain.ErrorInfo{
-			{
-				URL:       "http://example.com/error",
-				Error:     "connection timeout",
-				Timestamp: time.Now(),
-				Depth:     1,
-			},
-		},
-		SlowRequests: []domain.SlowRequest{
-			{
-				URL:          "http://example.com/slow",
-				ResponseTime: 3 * time.Second,
-				StatusCode:   200,
-			},
-		},
-		ResponseTimes: []domain.ResponseTimeEntry{
-			{
-				URL:          "http://example.com",
-				ResponseTime: 100 * time.Millisecond,
-				Timestamp:    time.Now(),
-			},
-			{
-				URL:          "http://example.com/fast",
-				ResponseTime: 50 * time.Millisecond,
-				Timestamp:    time.Now(),
-			},
-		},
-	}
-}
-
 func TestNew(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	if reporter == nil {
@@ -89,7 +25,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestGenerateJSON_Success(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	// Create temp file
@@ -140,7 +76,7 @@ func TestGenerateJSON_Success(t *testing.T) {
 }
 
 func TestGenerateJSON_FilePermissions(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	tmpfile, err := os.CreateTemp("", "lobster-test-*.json")
@@ -176,7 +112,7 @@ func TestGenerateJSON_FilePermissions(t *testing.T) {
 }
 
 func TestGenerateHTML_Success(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	tmpfile, err := os.CreateTemp("", "lobster-test-*.html")
@@ -234,7 +170,7 @@ func TestGenerateHTML_Success(t *testing.T) {
 }
 
 func TestGenerateHTML_FilePermissions(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	tmpfile, err := os.CreateTemp("", "lobster-test-*.html")
@@ -269,7 +205,7 @@ func TestGenerateHTML_FilePermissions(t *testing.T) {
 }
 
 func TestPrepareTemplateData(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	data := reporter.prepareTemplateData()
@@ -353,7 +289,7 @@ func TestPrepareTemplateData_SuccessRateClasses(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			results := sampleResults()
+			results := testutil.SampleResults()
 			results.SuccessRate = tt.successRate
 			reporter := New(results)
 
@@ -372,7 +308,7 @@ func TestPrepareTemplateData_SuccessRateClasses(t *testing.T) {
 }
 
 func TestGetHTMLTemplate(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	tmpl := reporter.getHTMLTemplate()
@@ -508,7 +444,7 @@ func TestPrepareTemplateData_StatusGroups(t *testing.T) {
 }
 
 func TestGenerateJSON_InvalidPath(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	// Try to write to invalid path
@@ -519,7 +455,7 @@ func TestGenerateJSON_InvalidPath(t *testing.T) {
 }
 
 func TestGenerateHTML_InvalidPath(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	err := reporter.GenerateHTML("/nonexistent/directory/file.html")
@@ -558,7 +494,7 @@ func TestPrepareTemplateData_EmptyResults(t *testing.T) {
 }
 
 func TestPrintSummary(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	reporter := New(results)
 
 	// PrintSummary outputs to stdout, just verify it doesn't panic
@@ -569,7 +505,7 @@ func TestPrintSummary(t *testing.T) {
 }
 
 func TestPrintSummary_WithErrors(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	results.Errors = []domain.ErrorInfo{
 		{URL: "http://example.com/err1", Error: "timeout", Timestamp: time.Now()},
 		{URL: "http://example.com/err2", Error: "connection refused", Timestamp: time.Now()},
@@ -582,7 +518,7 @@ func TestPrintSummary_WithErrors(t *testing.T) {
 }
 
 func TestPrintSummary_WithSlowRequests(t *testing.T) {
-	results := sampleResults()
+	results := testutil.SampleResults()
 	results.SlowRequests = []domain.SlowRequest{
 		{URL: "http://example.com/slow1", ResponseTime: 5 * time.Second, StatusCode: 200},
 		{URL: "http://example.com/slow2", ResponseTime: 4 * time.Second, StatusCode: 200},

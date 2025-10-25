@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/vnykmshr/lobster/internal/testutil"
 )
 
 func TestNew(t *testing.T) {
@@ -358,71 +359,6 @@ func TestValidateResults_TargetCount(t *testing.T) {
 	}
 }
 
-// Helper function to create sample test results for validation testing
-func sampleResults() *domain.TestResults {
-	return &domain.TestResults{
-		Duration:            "2m30s",
-		URLsDiscovered:      10,
-		TotalRequests:       100,
-		SuccessfulRequests:  95,
-		FailedRequests:      5,
-		AverageResponseTime: "150ms",
-		MinResponseTime:     "50ms",
-		MaxResponseTime:     "500ms",
-		RequestsPerSecond:   0.67,
-		SuccessRate:         95.0,
-		URLValidations: []domain.URLValidation{
-			{
-				URL:           "http://example.com",
-				StatusCode:    200,
-				ResponseTime:  100 * time.Millisecond,
-				ContentLength: 1024,
-				ContentType:   "text/html",
-				LinksFound:    5,
-				Depth:         0,
-				IsValid:       true,
-			},
-			{
-				URL:           "http://example.com/404",
-				StatusCode:    404,
-				ResponseTime:  50 * time.Millisecond,
-				ContentLength: 0,
-				ContentType:   "text/html",
-				LinksFound:    0,
-				Depth:         1,
-				IsValid:       false,
-			},
-		},
-		Errors: []domain.ErrorInfo{
-			{
-				URL:       "http://example.com/error",
-				Error:     "connection timeout",
-				Timestamp: time.Now(),
-				Depth:     1,
-			},
-		},
-		SlowRequests: []domain.SlowRequest{
-			{
-				URL:          "http://example.com/slow",
-				ResponseTime: 3 * time.Second,
-				StatusCode:   200,
-			},
-		},
-		ResponseTimes: []domain.ResponseTimeEntry{
-			{
-				URL:          "http://example.com",
-				ResponseTime: 100 * time.Millisecond,
-				Timestamp:    time.Now(),
-			},
-			{
-				URL:          "http://example.com/fast",
-				ResponseTime: 50 * time.Millisecond,
-				Timestamp:    time.Now(),
-			},
-		},
-	}
-}
-
 func TestPrintValidationReport(t *testing.T) {
 	targets := domain.PerformanceTargets{
 		RequestsPerSecond:   100,
@@ -434,7 +370,7 @@ func TestPrintValidationReport(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	// PrintValidationReport outputs to stdout
@@ -453,7 +389,7 @@ func TestPrintValidationReport_AllPassing(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	// Should print "ALL PERFORMANCE TARGETS MET"
@@ -471,7 +407,7 @@ func TestPrintValidationReport_MostPassing(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	// Should print "Most targets met"
@@ -489,7 +425,7 @@ func TestPrintValidationReport_WithComparison(t *testing.T) {
 	}
 	v := NewWithComparison(targets, "WordPress")
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	// Should print competitive analysis
@@ -507,7 +443,7 @@ func TestPrintCompetitiveAnalysis_BothPassing(t *testing.T) {
 	}
 	v := NewWithComparison(targets, "Ghost")
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	// printCompetitiveAnalysis is called by PrintValidationReport
@@ -525,7 +461,7 @@ func TestPrintCompetitiveAnalysis_BothFailing(t *testing.T) {
 	}
 	v := NewWithComparison(targets, "Custom CMS")
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	// Should show warnings
@@ -544,7 +480,7 @@ func TestGetOverallStatus_ProductionReady(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
@@ -569,7 +505,7 @@ func TestGetOverallStatus_MostlyReady(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
@@ -608,7 +544,7 @@ func TestGetOverallStatus_NeedsImprovement(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
@@ -633,7 +569,7 @@ func TestGetValidationSummary_Structure(t *testing.T) {
 	}
 	v := New(targets)
 
-	results := sampleResults()
+	results := testutil.SampleResults()
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
