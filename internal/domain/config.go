@@ -50,6 +50,8 @@ type TesterConfig struct {
 	DryRun             bool // Discover URLs without making actual test requests
 	InsecureSkipVerify bool // Skip TLS certificate validation (INSECURE - for testing only)
 	IgnoreRobots       bool // Ignore robots.txt directives (use responsibly)
+	Verbose            bool // Enable verbose logging
+	NoProgress         bool // Disable progress updates
 }
 
 // DefaultConfig returns a sensible default configuration

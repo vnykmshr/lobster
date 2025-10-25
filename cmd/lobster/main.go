@@ -40,6 +40,7 @@ func main() {
 		ignoreRobots      = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
+		noProgress        = flag.Bool("no-progress", false, "Disable progress updates")
 		showVersion       = flag.Bool("version", false, "Show version information")
 		showHelp          = flag.Bool("help", false, "Show help message")
 		compareAgainst    = flag.String("compare", "", "Compare against target (e.g., 'Ghost', 'WordPress')")
@@ -176,6 +177,8 @@ func main() {
 		InsecureSkipVerify: cfg.InsecureSkipVerify,
 		IgnoreRobots:       cfg.IgnoreRobots,
 		Rate:               cfg.Rate,
+		Verbose:            cfg.Verbose,
+		NoProgress:         *noProgress,
 	}
 
 	stressTester, err := tester.New(testerConfig, logger)
@@ -402,7 +405,9 @@ OPTIONS:
     -output string
         Output file for results (JSON format)
     -verbose
-        Enable verbose logging
+        Enable verbose logging with structured output
+    -no-progress
+        Disable real-time progress updates
     -compare string
         Compare performance against target (e.g., Ghost, WordPress)
 

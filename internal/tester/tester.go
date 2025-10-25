@@ -145,7 +145,7 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 	t.results.URLsDiscovered = t.crawler.GetDiscoveredCount()
 
 	// Start monitoring
-	go t.monitor(ctx)
+	go t.monitor(ctx, startTime)
 
 	// Wait for context cancellation or completion
 	<-ctx.Done()
@@ -561,16 +561,21 @@ func (t *Tester) addSlowRequest(req domain.SlowRequest) {
 }
 
 // monitor provides real-time progress updates
-func (t *Tester) monitor(ctx context.Context) {
+func (t *Tester) monitor(ctx context.Context, startTime time.Time) {
 	// Recover from panics to prevent monitor failure from crashing the test
 	defer func() {
 		if r := recover(); r != nil {
-			// Fallback to stderr if logger is unavailable
-			fmt.Fprintf(os.Stderr, "Monitor panic recovered: %v\n", r)
+			fmt.Fprintf(os.Stderr, "\nMonitor panic recovered: %v\n", r)
 		}
 	}()
 
-	ticker := time.NewTicker(10 * time.Second)
+	if t.config.NoProgress {
+		// No progress updates, just wait for context
+		<-ctx.Done()
+		return
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -581,21 +586,40 @@ func (t *Tester) monitor(ctx context.Context) {
 			successful := atomic.LoadInt64(&t.results.SuccessfulRequests)
 			failed := atomic.LoadInt64(&t.results.FailedRequests)
 			discovered := t.results.URLsDiscovered
+			queueSize := len(t.urlQueue)
 
-			// Try logger first, fall back to stderr if it fails
-			if t.logger != nil {
-				t.logger.Info("Progress update",
-					"total_requests", total,
-					"successful_requests", successful,
-					"failed_requests", failed,
-					"urls_discovered", discovered,
-					"queue_size", len(t.urlQueue))
+			// Calculate elapsed time and rate
+			elapsed := time.Since(startTime)
+			reqPerSec := float64(total) / elapsed.Seconds()
+
+			if t.config.Verbose {
+				// Verbose mode: use structured logging
+				if t.logger != nil {
+					t.logger.Info("Progress update",
+						"elapsed", elapsed.Round(time.Second).String(),
+						"total_requests", total,
+						"successful", successful,
+						"failed", failed,
+						"urls_discovered", discovered,
+						"queue_size", queueSize,
+						"req_per_sec", fmt.Sprintf("%.1f", reqPerSec))
+				}
 			} else {
-				// Fallback if logger is nil
-				fmt.Fprintf(os.Stderr, "Progress: %d requests (%d successful, %d failed), %d URLs discovered, queue: %d\n",
-					total, successful, failed, discovered, len(t.urlQueue))
+				// Normal mode: clean progress bar (overwrite same line)
+				fmt.Fprintf(os.Stderr, "\rElapsed: %s | Requests: %d (%.1f/s) | Success: %d | Failed: %d | URLs: %d | Queue: %d",
+					elapsed.Round(time.Second),
+					total,
+					reqPerSec,
+					successful,
+					failed,
+					discovered,
+					queueSize)
 			}
 		case <-ctx.Done():
+			if !t.config.Verbose {
+				// Print newline to finalize progress line
+				fmt.Fprintf(os.Stderr, "\n")
+			}
 			return
 		}
 	}
