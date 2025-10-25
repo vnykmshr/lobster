@@ -138,16 +138,16 @@ func (v *Validator) ValidateResults(results *domain.TestResults) {
 // PrintValidationReport prints a detailed performance validation report
 func (v *Validator) PrintValidationReport() {
 	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("🎯 PERFORMANCE TARGET VALIDATION")
+	fmt.Println("PERFORMANCE TARGET VALIDATION")
 	fmt.Println(strings.Repeat("=", 60))
 
 	passed := 0
 	total := len(v.targets)
 
 	for _, target := range v.targets {
-		status := "❌ FAIL"
+		status := "FAIL"
 		if target.Passed {
-			status = "✅ PASS"
+			status = "PASS"
 			passed++
 		}
 
@@ -160,11 +160,11 @@ func (v *Validator) PrintValidationReport() {
 
 	switch {
 	case passed == total:
-		fmt.Println("🎉 ALL PERFORMANCE TARGETS MET! Application is production-ready.")
+		fmt.Println("ALL PERFORMANCE TARGETS MET! Application is production-ready.")
 	case passed >= total*3/4:
-		fmt.Println("⚠️  Most targets met, but some optimization may be needed.")
+		fmt.Println("WARNING: Most targets met, but some optimization may be needed.")
 	default:
-		fmt.Println("🔧 Significant performance improvements needed before production.")
+		fmt.Println("Significant performance improvements needed before production.")
 	}
 
 	if v.enableComparison && v.comparisonTarget != "" {
@@ -174,7 +174,7 @@ func (v *Validator) PrintValidationReport() {
 
 // printCompetitiveAnalysis prints competitive comparison if enabled
 func (v *Validator) printCompetitiveAnalysis() {
-	fmt.Println("\n🏆 COMPETITIVE ANALYSIS")
+	fmt.Println("\nCOMPETITIVE ANALYSIS")
 	fmt.Println(strings.Repeat("=", 60))
 
 	// Check if we have performance metrics
@@ -183,20 +183,20 @@ func (v *Validator) printCompetitiveAnalysis() {
 
 	for _, target := range v.targets {
 		if target.Name == "95th Percentile Response Time" && target.Passed {
-			fmt.Printf("✅ Meeting p95 latency targets vs %s\n", v.comparisonTarget)
+			fmt.Printf("Meeting p95 latency targets vs %s\n", v.comparisonTarget)
 			hasGoodPerf = true
 		}
 		if target.Name == "Requests per Second" && target.Passed {
-			fmt.Printf("✅ Meeting throughput targets vs %s\n", v.comparisonTarget)
+			fmt.Printf("Meeting throughput targets vs %s\n", v.comparisonTarget)
 			hasGoodThroughput = true
 		}
 	}
 
 	if !hasGoodPerf {
-		fmt.Printf("⚠️  Response times need improvement to match %s\n", v.comparisonTarget)
+		fmt.Printf("WARNING: Response times need improvement to match %s\n", v.comparisonTarget)
 	}
 	if !hasGoodThroughput {
-		fmt.Printf("⚠️  Throughput needs improvement to match %s\n", v.comparisonTarget)
+		fmt.Printf("WARNING: Throughput needs improvement to match %s\n", v.comparisonTarget)
 	}
 }
 
