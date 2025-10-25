@@ -232,23 +232,61 @@ func (t *Tester) worker(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-// processDryRun handles URL discovery in dry-run mode (no actual HTTP requests)
-func (t *Tester) processDryRun(task domain.URLTask) {
+// processDryRun handles URL discovery in dry-run mode (makes requests but doesn't record performance metrics)
+func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 	atomic.AddInt64(&t.results.TotalRequests, 1)
 
-	// In dry-run mode, we mark all URLs as "discovered"
+	// Make HTTP request to discover links (but skip rate limiting)
+	req, err := http.NewRequestWithContext(ctx, "GET", task.URL, http.NoBody)
+	if err != nil {
+		t.logger.Debug("Error creating request in dry-run",
+			"url", util.SanitizeURLDefault(task.URL),
+			"error", err)
+		return
+	}
+
+	// Set headers
+	req.Header.Set("User-Agent", t.config.UserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+
+	// Apply authentication
+	if err := t.applyAuthentication(req); err != nil {
+		t.logger.Debug("Error applying authentication in dry-run",
+			"url", util.SanitizeURLDefault(task.URL),
+			"error", err)
+		return
+	}
+
+	// Execute request
+	resp, err := t.client.Do(req)
+	if err != nil {
+		t.logger.Debug("Error making request in dry-run",
+			"url", util.SanitizeURLDefault(task.URL),
+			"error", err)
+		return
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	// Record basic validation (without performance metrics)
 	validation := domain.URLValidation{
 		URL:        task.URL,
-		StatusCode: 0, // No actual request made
+		StatusCode: resp.StatusCode,
 		Depth:      task.Depth,
-		IsValid:    false, // Unknown in dry-run
+		IsValid:    resp.StatusCode >= 200 && resp.StatusCode < 400,
 	}
+
+	// Discover links from response
+	validation.LinksFound = t.discoverLinksFromResponse(resp, task)
 
 	t.addValidation(validation)
 
 	t.logger.Info("URL discovered (dry-run)",
 		"url", util.SanitizeURLDefault(task.URL),
-		"depth", task.Depth)
+		"depth", task.Depth,
+		"status", resp.StatusCode,
+		"links_found", validation.LinksFound)
 }
 
 // processURL performs a single URL request and records results
@@ -261,9 +299,9 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 		return
 	}
 
-	// In dry-run mode, just record the URL without making requests
+	// In dry-run mode, make requests for link discovery but skip performance metrics
 	if t.config.DryRun {
-		t.processDryRun(task)
+		t.processDryRun(ctx, task)
 		return
 	}
 
