@@ -38,6 +38,12 @@
         .success-high { color: #48bb78; }
         .success-medium { color: #ed8936; }
         .success-low { color: #f56565; }
+        .security-warning { background: #fff3cd; border: 2px solid #ffc107; border-radius: 12px; padding: 20px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(255, 193, 7, 0.2); }
+        .security-warning h3 { color: #856404; margin-bottom: 12px; display: flex; align-items: center; font-size: 1.2em; }
+        .security-warning h3::before { content: "⚠️"; font-size: 1.5em; margin-right: 10px; }
+        .security-warning p { color: #856404; margin-bottom: 8px; line-height: 1.8; }
+        .security-warning ul { color: #856404; margin-left: 25px; margin-top: 8px; line-height: 1.8; }
+        .security-warning strong { font-weight: 600; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -46,6 +52,25 @@
         <div class="header">
             <h1>🚀 Lobster Test Report</h1>
             <p>Generated on {{.Timestamp}} | Duration: {{.Duration}}</p>
+        </div>
+
+        <div class="security-warning">
+            <h3>Security Notice</h3>
+            <p><strong>This report contains potentially sensitive information and should be handled securely.</strong></p>
+            <p>The report may include:</p>
+            <ul>
+                <li>Full URLs with query parameters (which may contain API keys, tokens, or session IDs)</li>
+                <li>Error messages that could reveal system information</li>
+                <li>Authentication headers and cookies</li>
+                <li>Internal server paths and configurations</li>
+            </ul>
+            <p><strong>Security recommendations:</strong></p>
+            <ul>
+                <li>Do not share this report publicly or commit it to version control</li>
+                <li>Store it in a secure location with appropriate access controls</li>
+                <li>Review and sanitize URLs before sharing with third parties</li>
+                <li>Delete reports when no longer needed</li>
+            </ul>
         </div>
 
         <div class="stats-grid">
