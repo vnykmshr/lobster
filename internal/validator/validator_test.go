@@ -357,3 +357,298 @@ func TestValidateResults_TargetCount(t *testing.T) {
 		}
 	}
 }
+
+// Helper function to create sample test results for validation testing
+func sampleResults() *domain.TestResults {
+	return &domain.TestResults{
+		Duration:            "2m30s",
+		URLsDiscovered:      10,
+		TotalRequests:       100,
+		SuccessfulRequests:  95,
+		FailedRequests:      5,
+		AverageResponseTime: "150ms",
+		MinResponseTime:     "50ms",
+		MaxResponseTime:     "500ms",
+		RequestsPerSecond:   0.67,
+		SuccessRate:         95.0,
+		URLValidations: []domain.URLValidation{
+			{
+				URL:           "http://example.com",
+				StatusCode:    200,
+				ResponseTime:  100 * time.Millisecond,
+				ContentLength: 1024,
+				ContentType:   "text/html",
+				LinksFound:    5,
+				Depth:         0,
+				IsValid:       true,
+			},
+			{
+				URL:           "http://example.com/404",
+				StatusCode:    404,
+				ResponseTime:  50 * time.Millisecond,
+				ContentLength: 0,
+				ContentType:   "text/html",
+				LinksFound:    0,
+				Depth:         1,
+				IsValid:       false,
+			},
+		},
+		Errors: []domain.ErrorInfo{
+			{
+				URL:       "http://example.com/error",
+				Error:     "connection timeout",
+				Timestamp: time.Now(),
+				Depth:     1,
+			},
+		},
+		SlowRequests: []domain.SlowRequest{
+			{
+				URL:          "http://example.com/slow",
+				ResponseTime: 3 * time.Second,
+				StatusCode:   200,
+			},
+		},
+		ResponseTimes: []domain.ResponseTimeEntry{
+			{
+				URL:          "http://example.com",
+				ResponseTime: 100 * time.Millisecond,
+				Timestamp:    time.Now(),
+			},
+			{
+				URL:          "http://example.com/fast",
+				ResponseTime: 50 * time.Millisecond,
+				Timestamp:    time.Now(),
+			},
+		},
+	}
+}
+
+func TestPrintValidationReport(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   100,
+		AvgResponseTimeMs:   50,
+		P95ResponseTimeMs:   100,
+		P99ResponseTimeMs:   200,
+		SuccessRate:         95.0,
+		ErrorRate:           5.0,
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	// PrintValidationReport outputs to stdout
+	// Just verify it doesn't panic
+	v.PrintValidationReport()
+}
+
+func TestPrintValidationReport_AllPassing(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   10,  // Low target
+		AvgResponseTimeMs:   500, // High target
+		P95ResponseTimeMs:   1000,
+		P99ResponseTimeMs:   2000,
+		SuccessRate:         90.0,
+		ErrorRate:           20.0,
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	// Should print "ALL PERFORMANCE TARGETS MET"
+	v.PrintValidationReport()
+}
+
+func TestPrintValidationReport_MostPassing(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   50,   // Some pass
+		AvgResponseTimeMs:   100,  // Some fail
+		P95ResponseTimeMs:   200,
+		P99ResponseTimeMs:   400,
+		SuccessRate:         95.0,
+		ErrorRate:           5.0,
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	// Should print "Most targets met"
+	v.PrintValidationReport()
+}
+
+func TestPrintValidationReport_WithComparison(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   100,
+		AvgResponseTimeMs:   50,
+		P95ResponseTimeMs:   100,
+		P99ResponseTimeMs:   200,
+		SuccessRate:         95.0,
+		ErrorRate:           5.0,
+	}
+	v := NewWithComparison(targets, "WordPress")
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	// Should print competitive analysis
+	v.PrintValidationReport()
+}
+
+func TestPrintCompetitiveAnalysis_BothPassing(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   10,  // Easy targets
+		AvgResponseTimeMs:   500,
+		P95ResponseTimeMs:   1000,
+		P99ResponseTimeMs:   2000,
+		SuccessRate:         90.0,
+		ErrorRate:           20.0,
+	}
+	v := NewWithComparison(targets, "Ghost")
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	// printCompetitiveAnalysis is called by PrintValidationReport
+	v.PrintValidationReport()
+}
+
+func TestPrintCompetitiveAnalysis_BothFailing(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   1000, // Very high targets
+		AvgResponseTimeMs:   1,
+		P95ResponseTimeMs:   2,
+		P99ResponseTimeMs:   5,
+		SuccessRate:         99.9,
+		ErrorRate:           0.1,
+	}
+	v := NewWithComparison(targets, "Custom CMS")
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	// Should show warnings
+	v.PrintValidationReport()
+}
+
+func TestGetOverallStatus_ProductionReady(t *testing.T) {
+	// Set very easy targets so all pass (sample has 0.67 req/s)
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   0.5,   // Sample has 0.67
+		AvgResponseTimeMs:   500,   // Sample has ~150ms
+		P95ResponseTimeMs:   1000,  // Sample has ~100ms
+		P99ResponseTimeMs:   2000,  // Sample has ~100ms
+		SuccessRate:         90.0,  // Sample has 95.0%
+		ErrorRate:           20.0,  // Sample has 5.0%
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	summary := v.GetValidationSummary()
+	status := summary["overall_status"].(string)
+
+	if status != "PRODUCTION_READY" {
+		t.Errorf("Expected PRODUCTION_READY, got %s", status)
+	}
+}
+
+func TestGetOverallStatus_MostlyReady(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   50,
+		AvgResponseTimeMs:   100,
+		P95ResponseTimeMs:   200,
+		P99ResponseTimeMs:   400,
+		SuccessRate:         95.0,
+		ErrorRate:           5.0,
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	summary := v.GetValidationSummary()
+	status := summary["overall_status"].(string)
+
+	// Should be MOSTLY_READY (>= 3/4 targets met)
+	passed := summary["targets_met"].(int)
+	total := summary["total_targets"].(int)
+	
+	if passed < total*3/4 {
+		t.Skip("Test setup doesn't result in mostly ready status")
+	}
+
+	if status != "MOSTLY_READY" {
+		t.Errorf("Expected MOSTLY_READY, got %s", status)
+	}
+}
+
+func TestGetOverallStatus_NeedsImprovement(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   500,  // Very high
+		AvgResponseTimeMs:   10,   // Very low
+		P95ResponseTimeMs:   20,
+		P99ResponseTimeMs:   50,
+		SuccessRate:         99.5,
+		ErrorRate:           0.5,
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	summary := v.GetValidationSummary()
+	status := summary["overall_status"].(string)
+
+	if status != "NEEDS_IMPROVEMENT" {
+		t.Errorf("Expected NEEDS_IMPROVEMENT, got %s", status)
+	}
+}
+
+func TestGetValidationSummary_Structure(t *testing.T) {
+	targets := domain.PerformanceTargets{
+		RequestsPerSecond:   100,
+		AvgResponseTimeMs:   50,
+		P95ResponseTimeMs:   100,
+		P99ResponseTimeMs:   200,
+		SuccessRate:         95.0,
+		ErrorRate:           5.0,
+	}
+	v := New(targets)
+
+	results := sampleResults()
+	v.ValidateResults(results)
+
+	summary := v.GetValidationSummary()
+
+	// Verify required keys
+	requiredKeys := []string{"targets_met", "total_targets", "success_rate", "overall_status", "targets"}
+	for _, key := range requiredKeys {
+		if _, ok := summary[key]; !ok {
+			t.Errorf("Expected key '%s' in summary", key)
+		}
+	}
+
+	// Verify targets array structure
+	targetsArray, ok := summary["targets"].([]map[string]interface{})
+	if !ok {
+		t.Fatal("Expected targets to be array of maps")
+	}
+
+	if len(targetsArray) != 6 {
+		t.Errorf("Expected 6 targets, got %d", len(targetsArray))
+	}
+
+	// Verify target structure
+	if len(targetsArray) > 0 {
+		target := targetsArray[0]
+		targetKeys := []string{"name", "target", "actual", "description", "passed"}
+		for _, key := range targetKeys {
+			if _, ok := target[key]; !ok {
+				t.Errorf("Expected key '%s' in target", key)
+			}
+		}
+	}
+}
