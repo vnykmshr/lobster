@@ -43,7 +43,7 @@ func (r *Reporter) GenerateHTML(outputPath string) error {
 	// Create file with secure permissions (0o600) consistent with JSON output
 	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
-		return fmt.Errorf("creating output file: %w", err)
+		return fmt.Errorf("cannot create HTML report %s: %w\nCheck directory exists and has write permissions", outputPath, err)
 	}
 	defer func() {
 		_ = file.Close()
@@ -66,7 +66,7 @@ func (r *Reporter) GenerateJSON(outputPath string) error {
 
 	err = os.WriteFile(outputPath, data, 0o600)
 	if err != nil {
-		return fmt.Errorf("writing JSON file: %w", err)
+		return fmt.Errorf("cannot write JSON report %s: %w\nCheck directory exists, has write permissions, and sufficient disk space", outputPath, err)
 	}
 
 	return nil

@@ -90,12 +90,12 @@ func main() {
 		authHeader:         *authHeader,
 	})
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("Configuration error: %v\nCheck your config file syntax or command-line flags", err)
 	}
 
 	// Validate and enforce rate limit safety
 	if err := validateRateLimit(&cfg.Rate); err != nil {
-		log.Fatalf("Rate limit validation failed: %v", err)
+		log.Fatalf("Invalid rate limit: %v\nUse -rate flag with a value >= 0.1", err)
 	}
 
 	// Warn about insecure TLS skip verify
@@ -149,13 +149,13 @@ func main() {
 	// Parse duration
 	testDuration, err := time.ParseDuration(cfg.Duration)
 	if err != nil {
-		log.Fatalf("Invalid duration: %v", err)
+		log.Fatalf("Invalid duration format: %v\nUse format like: 30s, 5m, 1h (e.g., -duration 2m)", err)
 	}
 
 	// Parse timeout
 	requestTimeout, err := time.ParseDuration(cfg.Timeout)
 	if err != nil {
-		log.Fatalf("Invalid timeout: %v", err)
+		log.Fatalf("Invalid timeout format: %v\nUse format like: 30s, 5m, 1h (e.g., -timeout 30s)", err)
 	}
 
 	// Create context with timeout
@@ -184,7 +184,7 @@ func main() {
 	stressTester, err := tester.New(testerConfig, logger)
 	if err != nil {
 		cancel()
-		log.Fatalf("Failed to create tester: %v", err) //nolint:gocritic // cancel() is called explicitly before exit
+		log.Fatalf("Tester initialization failed: %v\nCheck your configuration and base URL", err) //nolint:gocritic // cancel() is called explicitly before exit
 	}
 
 	// Run stress test
@@ -229,7 +229,7 @@ func main() {
 		err = rep.GenerateJSON(cfg.OutputFile)
 		if err != nil {
 			cancel()
-			log.Fatalf("Failed to save results: %v", err)
+			log.Fatalf("Cannot write results to %s: %v\nCheck file permissions and disk space", cfg.OutputFile, err)
 		}
 		logger.Info("Results saved", "file", cfg.OutputFile)
 
@@ -237,7 +237,7 @@ func main() {
 		htmlFile := strings.TrimSuffix(cfg.OutputFile, filepath.Ext(cfg.OutputFile)) + ".html"
 		err = rep.GenerateHTML(htmlFile)
 		if err != nil {
-			logger.Error("Failed to generate HTML report", "error", err)
+			logger.Error("Cannot write HTML report", "file", htmlFile, "error", err)
 		} else {
 			logger.Info("HTML report generated", "file", htmlFile)
 		}

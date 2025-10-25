@@ -36,7 +36,7 @@ func (p *Parser) FetchAndParse(ctx context.Context, baseURL string) error {
 	// Parse base URL
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
-		return fmt.Errorf("parsing base URL: %w", err)
+		return fmt.Errorf("invalid base URL %s: %w\nUse format: http://example.com or https://example.com", baseURL, err)
 	}
 
 	// Construct robots.txt URL

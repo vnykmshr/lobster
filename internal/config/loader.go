@@ -21,13 +21,13 @@ func NewLoader() *Loader {
 func (l *Loader) LoadFromFile(path string) (*domain.Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading config file: %w", err)
+		return nil, fmt.Errorf("cannot read config file %s: %w\nCheck if file exists and has read permissions", path, err)
 	}
 
 	var config domain.Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		return nil, fmt.Errorf("parsing config JSON: %w", err)
+		return nil, fmt.Errorf("invalid JSON in config file: %w\nVerify JSON syntax at %s", err, path)
 	}
 
 	return &config, nil
@@ -42,7 +42,7 @@ func (l *Loader) SaveToFile(config *domain.Config, path string) error {
 
 	err = os.WriteFile(path, data, 0o600)
 	if err != nil {
-		return fmt.Errorf("writing config file: %w", err)
+		return fmt.Errorf("cannot write config file %s: %w\nCheck directory exists and has write permissions", path, err)
 	}
 
 	return nil
