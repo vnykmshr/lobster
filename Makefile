@@ -27,7 +27,7 @@ help:
 	@echo "  make <target>"
 	@echo ""
 	@echo "Targets:"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk '/^## [a-zA-Z_-]+:/ { sub(/^## /, ""); split($$0, parts, ": "); printf "  %-20s %s\n", parts[1], substr($$0, length(parts[1])+3) }' $(MAKEFILE_LIST)
 
 ## build: Build the binary
 build:
