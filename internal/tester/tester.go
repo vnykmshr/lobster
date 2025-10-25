@@ -16,6 +16,7 @@ import (
 	"github.com/vnykmshr/goflow/pkg/ratelimit/bucket"
 	"github.com/vnykmshr/lobster/internal/crawler"
 	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/vnykmshr/lobster/internal/util"
 )
 
 // Tester orchestrates the stress testing process
@@ -247,7 +248,7 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 	t.addValidation(validation)
 
 	t.logger.Debug("URL processed",
-		"url", task.URL,
+		"url", util.SanitizeURLDefault(task.URL),
 		"status", resp.StatusCode,
 		"response_time", responseTime,
 		"depth", task.Depth,
@@ -292,7 +293,7 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 	body, readErr := io.ReadAll(limitedReader)
 	if readErr != nil && readErr != io.EOF {
 		t.logger.Debug("Error reading response body for link extraction",
-			"url", task.URL,
+			"url", util.SanitizeURLDefault(task.URL),
 			"error", readErr)
 		return 0
 	}
