@@ -241,7 +241,7 @@ Allow: /admin/public/
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/robots.txt" {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(robotsTxt))
+			_, _ = w.Write([]byte(robotsTxt))
 		}
 	}))
 	defer server.Close()
@@ -311,7 +311,7 @@ User-agent: *
 Disallow: /admin/
 `
 	parser := New("TestBot/1.0")
-	parser.Parse(strings.NewReader(robotsTxt))
+	_ = parser.Parse(strings.NewReader(robotsTxt))
 	parser.robotsTxtFound = true
 
 	// Invalid URL should be disallowed (conservative)

@@ -102,6 +102,35 @@ issues:
         - dupl
         - gocyclo
 
+    # Exclude main.go from dupl and gocyclo - intentional warning boxes and CLI complexity
+    - path: cmd/lobster/main\.go
+      linters:
+        - dupl
+        - gocyclo
+
+    # Exclude robots parser from gocyclo - complex RFC compliance logic
+    - path: internal/robots/robots\.go
+      linters:
+        - gocyclo
+
+    # Exclude tester from shadow, gocritic, and gocyclo - intentional error handling patterns
+    - path: internal/tester/tester\.go
+      linters:
+        - govet
+        - gocyclo
+      text: "shadow:|cyclomatic complexity"
+
+    - path: internal/tester/tester\.go
+      linters:
+        - gocritic
+      text: "hugeParam"
+
+    # Exclude tests from gocritic nesting suggestions
+    - path: _test\.go
+      linters:
+        - gocritic
+      text: "nestingReduce"
+
     # Allow init functions
     - text: "should not use dot imports"
       linters:

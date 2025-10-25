@@ -548,7 +548,10 @@ func TestGetOverallStatus_ProductionReady(t *testing.T) {
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
-	status := summary["overall_status"].(string)
+	status, ok := summary["overall_status"].(string)
+	if !ok {
+		t.Fatal("Expected overall_status to be string")
+	}
 
 	if status != "PRODUCTION_READY" {
 		t.Errorf("Expected PRODUCTION_READY, got %s", status)
@@ -570,11 +573,20 @@ func TestGetOverallStatus_MostlyReady(t *testing.T) {
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
-	status := summary["overall_status"].(string)
+	status, ok := summary["overall_status"].(string)
+	if !ok {
+		t.Fatal("Expected overall_status to be string")
+	}
 
 	// Should be MOSTLY_READY (>= 3/4 targets met)
-	passed := summary["targets_met"].(int)
-	total := summary["total_targets"].(int)
+	passed, ok := summary["targets_met"].(int)
+	if !ok {
+		t.Fatal("Expected targets_met to be int")
+	}
+	total, ok := summary["total_targets"].(int)
+	if !ok {
+		t.Fatal("Expected total_targets to be int")
+	}
 	
 	if passed < total*3/4 {
 		t.Skip("Test setup doesn't result in mostly ready status")
@@ -600,7 +612,10 @@ func TestGetOverallStatus_NeedsImprovement(t *testing.T) {
 	v.ValidateResults(results)
 
 	summary := v.GetValidationSummary()
-	status := summary["overall_status"].(string)
+	status, ok := summary["overall_status"].(string)
+	if !ok {
+		t.Fatal("Expected overall_status to be string")
+	}
 
 	if status != "NEEDS_IMPROVEMENT" {
 		t.Errorf("Expected NEEDS_IMPROVEMENT, got %s", status)
@@ -646,7 +661,7 @@ func TestGetValidationSummary_Structure(t *testing.T) {
 		target := targetsArray[0]
 		targetKeys := []string{"name", "target", "actual", "description", "passed"}
 		for _, key := range targetKeys {
-			if _, ok := target[key]; !ok {
+			if _, keyOK := target[key]; !keyOK {
 				t.Errorf("Expected key '%s' in target", key)
 			}
 		}

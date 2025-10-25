@@ -190,7 +190,7 @@ func TestMakeHTTPRequest_Success(t *testing.T) {
 	if resp == nil {
 		t.Fatal("Expected response to be non-nil")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -257,7 +257,7 @@ func TestDiscoverLinksFromResponse_HTML(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get test page: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	task := domain.URLTask{URL: server.URL, Depth: 0}
 	linksFound := tester.discoverLinksFromResponse(resp, task)
@@ -291,7 +291,7 @@ func TestDiscoverLinksFromResponse_NotHTML(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get test page: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	task := domain.URLTask{URL: server.URL, Depth: 0}
 	linksFound := tester.discoverLinksFromResponse(resp, task)
@@ -322,7 +322,7 @@ func TestDiscoverLinksFromResponse_MaxDepthReached(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get test page: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Task at max depth
 	task := domain.URLTask{URL: server.URL, Depth: 2}
@@ -353,7 +353,7 @@ func TestDiscoverLinksFromResponse_FollowLinksDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get test page: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	task := domain.URLTask{URL: server.URL, Depth: 0}
 	linksFound := tester.discoverLinksFromResponse(resp, task)
@@ -933,7 +933,7 @@ func TestApplyAuthentication_IntegrationWithHTTPRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make HTTP request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if !authReceived {
 		t.Error("Authentication token was not sent to server")

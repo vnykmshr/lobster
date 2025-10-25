@@ -61,7 +61,9 @@ func (p *Parser) FetchAndParse(ctx context.Context, baseURL string) error {
 		// If robots.txt doesn't exist or network error, allow crawling
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	// If robots.txt not found (404), allow crawling
 	if resp.StatusCode == http.StatusNotFound {

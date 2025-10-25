@@ -94,8 +94,8 @@ func main() {
 	}
 
 	// Validate and enforce rate limit safety
-	if err := validateRateLimit(&cfg.Rate); err != nil {
-		log.Fatalf("Invalid rate limit: %v\nUse -rate flag with a value >= 0.1", err)
+	if validateErr := validateRateLimit(&cfg.Rate); validateErr != nil {
+		log.Fatalf("Invalid rate limit: %v\nUse -rate flag with a value >= 0.1", validateErr)
 	}
 
 	// Warn about insecure TLS skip verify
@@ -541,7 +541,7 @@ func validateRateLimit(rate *float64) error {
 			}
 			response = strings.TrimSpace(strings.ToLower(response))
 			if response != "y" && response != "yes" {
-				return fmt.Errorf("test cancelled by user")
+				return fmt.Errorf("test canceled by user")
 			}
 			fmt.Fprintf(os.Stderr, "\n")
 		} else {

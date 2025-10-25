@@ -97,8 +97,14 @@ func TestGenerateJSON_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Close()
+	defer func() {
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			t.Logf("Warning: failed to remove temp file: %v", removeErr)
+		}
+	}()
+	if closeErr := tmpfile.Close(); closeErr != nil {
+		t.Fatalf("Failed to close temp file: %v", closeErr)
+	}
 
 	// Generate JSON
 	err = reporter.GenerateJSON(tmpfile.Name())
@@ -141,8 +147,14 @@ func TestGenerateJSON_FilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
+	if closeErr := tmpfile.Close(); closeErr != nil {
+		t.Fatalf("Failed to close temp file: %v", closeErr)
+	}
+	defer func() {
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			t.Logf("Warning: failed to remove temp file: %v", removeErr)
+		}
+	}()
 
 	err = reporter.GenerateJSON(tmpfile.Name())
 	if err != nil {
@@ -171,8 +183,14 @@ func TestGenerateHTML_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Close()
+	defer func() {
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			t.Logf("Warning: failed to remove temp file: %v", removeErr)
+		}
+	}()
+	if closeErr := tmpfile.Close(); closeErr != nil {
+		t.Fatalf("Failed to close temp file: %v", closeErr)
+	}
 
 	err = reporter.GenerateHTML(tmpfile.Name())
 	if err != nil {
@@ -187,7 +205,7 @@ func TestGenerateHTML_Success(t *testing.T) {
 
 	html := string(data)
 
-	if len(html) == 0 {
+	if html == "" {
 		t.Fatal("Expected generated HTML to have content")
 	}
 
@@ -223,8 +241,14 @@ func TestGenerateHTML_FilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	tmpfile.Close()
-	defer os.Remove(tmpfile.Name())
+	if closeErr := tmpfile.Close(); closeErr != nil {
+		t.Fatalf("Failed to close temp file: %v", closeErr)
+	}
+	defer func() {
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			t.Logf("Warning: failed to remove temp file: %v", removeErr)
+		}
+	}()
 
 	err = reporter.GenerateHTML(tmpfile.Name())
 	if err != nil {
@@ -334,7 +358,10 @@ func TestPrepareTemplateData_SuccessRateClasses(t *testing.T) {
 			reporter := New(results)
 
 			data := reporter.prepareTemplateData()
-			successRateClass := data["SuccessRateClass"].(string)
+			successRateClass, ok := data["SuccessRateClass"].(string)
+			if !ok {
+				t.Fatal("Expected SuccessRateClass to be string")
+			}
 
 			if successRateClass != tt.expectedClass {
 				t.Errorf("Expected class '%s' for %.1f%%, got '%s'",
@@ -350,7 +377,7 @@ func TestGetHTMLTemplate(t *testing.T) {
 
 	tmpl := reporter.getHTMLTemplate()
 
-	if len(tmpl) == 0 {
+	if tmpl == "" {
 		t.Fatal("Expected template to have content")
 	}
 
@@ -396,7 +423,10 @@ func TestPrepareTemplateData_StatusDistribution(t *testing.T) {
 	reporter := New(results)
 
 	data := reporter.prepareTemplateData()
-	statusDist := data["StatusDistribution"].([]map[string]interface{})
+	statusDist, ok := data["StatusDistribution"].([]map[string]interface{})
+	if !ok {
+		t.Fatal("Expected StatusDistribution to be []map[string]interface{}")
+	}
 
 	// Should have 4 unique status codes
 	if len(statusDist) != 4 {
@@ -412,7 +442,10 @@ func TestPrepareTemplateData_StatusDistribution(t *testing.T) {
 				t.Errorf("Expected count 2 for status 200, got %v", entry["Count"])
 			}
 			// 2 out of 5 = 40%
-			percentage := entry["Percentage"].(float64)
+			percentage, percentageOK := entry["Percentage"].(float64)
+			if !percentageOK {
+				t.Fatal("Expected Percentage to be float64")
+			}
 			if percentage != 40.0 {
 				t.Errorf("Expected 40%% for status 200, got %.1f", percentage)
 			}
@@ -438,13 +471,22 @@ func TestPrepareTemplateData_StatusGroups(t *testing.T) {
 	reporter := New(results)
 
 	data := reporter.prepareTemplateData()
-	urlValidations := data["URLValidations"].([]map[string]interface{})
+	urlValidations, ok := data["URLValidations"].([]map[string]interface{})
+	if !ok {
+		t.Fatal("Expected URLValidations to be []map[string]interface{}")
+	}
 
 	// Verify status groups
 	statusGroups := make(map[int]string)
 	for _, v := range urlValidations {
-		statusCode := v["StatusCode"].(int)
-		statusGroup := v["StatusGroup"].(string)
+		statusCode, codeOK := v["StatusCode"].(int)
+		if !codeOK {
+			t.Fatal("Expected StatusCode to be int")
+		}
+		statusGroup, groupOK := v["StatusGroup"].(string)
+		if !groupOK {
+			t.Fatal("Expected StatusGroup to be string")
+		}
 		statusGroups[statusCode] = statusGroup
 	}
 
@@ -498,12 +540,18 @@ func TestPrepareTemplateData_EmptyResults(t *testing.T) {
 	// Should not panic with empty data
 	data := reporter.prepareTemplateData()
 
-	statusDist := data["StatusDistribution"].([]map[string]interface{})
+	statusDist, ok := data["StatusDistribution"].([]map[string]interface{})
+	if !ok {
+		t.Fatal("Expected StatusDistribution to be []map[string]interface{}")
+	}
 	if len(statusDist) != 0 {
 		t.Errorf("Expected empty status distribution, got %d entries", len(statusDist))
 	}
 
-	responseTimesMs := data["ResponseTimesMs"].([]float64)
+	responseTimesMs, ok := data["ResponseTimesMs"].([]float64)
+	if !ok {
+		t.Fatal("Expected ResponseTimesMs to be []float64")
+	}
 	if len(responseTimesMs) != 0 {
 		t.Errorf("Expected empty response times, got %d entries", len(responseTimesMs))
 	}
