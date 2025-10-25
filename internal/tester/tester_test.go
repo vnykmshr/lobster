@@ -457,8 +457,51 @@ func TestRun_ErrorHandling(t *testing.T) {
 	}
 }
 
-// TestRun_SlowRequests skipped - takes >2 seconds to run
-// Covered by unit test of recordSlowRequest instead
+// TestRun_SlowRequests tests that slow requests (>2s) are properly recorded.
+// This test is skipped in short mode due to runtime requirements.
+func TestRun_SlowRequests(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping slow test in short mode")
+	}
+
+	// Create a test server that responds slowly
+	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2100 * time.Millisecond) // Just over 2 seconds
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html><body>Slow response</body></html>"))
+	}))
+	defer slowServer.Close()
+
+	config := testConfig(slowServer.URL)
+	config.MaxDepth = 0 // Don't crawl, just test the seed URL
+	config.NoProgress = true // Disable progress output in tests
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Use timeout to ensure test doesn't hang
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	results, err := tester.Run(ctx)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	// Verify the slow request was recorded
+	if len(results.SlowRequests) != 1 {
+		t.Errorf("Expected 1 slow request, got %d", len(results.SlowRequests))
+	}
+
+	if len(results.SlowRequests) > 0 {
+		if results.SlowRequests[0].ResponseTime < 2*time.Second {
+			t.Errorf("Expected response time >= 2s, got %v", results.SlowRequests[0].ResponseTime)
+		}
+	}
+}
 
 func TestCalculateResults(t *testing.T) {
 	config := testConfig("http://example.com")
@@ -665,8 +708,81 @@ func TestRun_ConcurrentWorkers(t *testing.T) {
 	}
 }
 
-// TestRun_WithRateLimiting skipped - takes 2+ seconds to run reliably
-// Rate limiter functionality tested in unit test instead
+// TestRun_WithRateLimiting tests that rate limiting properly throttles requests.
+// This test is skipped in short mode due to runtime requirements.
+func TestRun_WithRateLimiting(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping slow test in short mode")
+	}
+
+	requestTimes := []time.Time{}
+	var mu sync.Mutex
+
+	// Create a test server that records request timestamps and returns links
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestTimes = append(requestTimes, time.Now())
+		mu.Unlock()
+
+		w.WriteHeader(http.StatusOK)
+		// Return HTML with links to create multiple requests
+		if r.URL.Path == "" || r.URL.Path == "/" {
+			_, _ = w.Write([]byte(`<html><body>
+				<a href="/page1">Page 1</a>
+				<a href="/page2">Page 2</a>
+			</body></html>`))
+		} else {
+			_, _ = w.Write([]byte("<html><body>Subpage</body></html>"))
+		}
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.MaxDepth = 1 // Allow crawling to discover links
+	config.FollowLinks = true // Must follow links to make multiple requests
+	config.Concurrency = 1 // Single worker to test rate limiting properly
+	config.Rate = 1.0 // 1 request per second = 1000ms between requests
+	config.NoProgress = true // Disable progress output in tests
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Use timeout to ensure test doesn't hang
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+
+	_, err = tester.Run(ctx)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	// Verify rate limiting worked by checking time between requests
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(requestTimes) < 2 {
+		t.Fatalf("Expected at least 2 requests, got %d", len(requestTimes))
+	}
+
+	// Check that at least some requests are rate-limited
+	// With burst capacity, first few may be fast, but subsequent should be throttled
+	// Look for at least one gap >= 800ms (allowing 200ms tolerance for 1 req/s)
+	hasThrottledRequest := false
+	for i := 1; i < len(requestTimes); i++ {
+		timeBetween := requestTimes[i].Sub(requestTimes[i-1])
+		if timeBetween >= 800*time.Millisecond {
+			hasThrottledRequest = true
+			break
+		}
+	}
+
+	if !hasThrottledRequest {
+		t.Errorf("No throttled requests found. Request times: %v. Expected at least one gap >= 800ms", requestTimes)
+	}
+}
 
 func TestApplyAuthentication(t *testing.T) {
 	tests := []struct {
