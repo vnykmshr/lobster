@@ -17,6 +17,7 @@ type Config struct {
 	QueueSize          int                `json:"queue_size"`
 	FollowLinks        bool               `json:"follow_links"`
 	Respect429         bool               `json:"respect_429"`
+	DryRun             bool               `json:"dry_run"`
 	Verbose            bool               `json:"verbose"`
 }
 
@@ -31,6 +32,7 @@ type TesterConfig struct {
 	QueueSize      int
 	FollowLinks    bool
 	Respect429     bool // Respect HTTP 429 (Too Many Requests) with exponential backoff
+	DryRun         bool // Discover URLs without making actual test requests
 }
 
 // DefaultConfig returns a sensible default configuration
@@ -46,6 +48,7 @@ func DefaultConfig() Config {
 		MaxDepth:           3,
 		QueueSize:          10000, // ~80KB per 10K queue (assuming 8 bytes per URLTask)
 		Respect429:         true,  // Respect rate limiting by default
+		DryRun:             false, // Perform actual tests by default
 		OutputFile:         "",
 		Verbose:            false,
 		PerformanceTargets: DefaultPerformanceTargets(),

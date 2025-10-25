@@ -35,6 +35,7 @@ func main() {
 		maxDepth          = flag.Int("max-depth", 0, "Maximum crawl depth")
 		queueSize         = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
 		respect429        = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
+		dryRun            = flag.Bool("dry-run", false, "Discover URLs without making test requests")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
 		showVersion       = flag.Bool("version", false, "Show version information")
@@ -65,6 +66,7 @@ func main() {
 		maxDepth:    *maxDepth,
 		queueSize:   *queueSize,
 		respect429:  *respect429,
+		dryRun:      *dryRun,
 		outputFile:  *outputFile,
 		verbose:     *verbose,
 	})
@@ -113,6 +115,7 @@ func main() {
 		MaxDepth:       cfg.MaxDepth,
 		QueueSize:      cfg.QueueSize,
 		Respect429:     cfg.Respect429,
+		DryRun:         cfg.DryRun,
 		Rate:           cfg.Rate,
 	}
 
@@ -191,6 +194,7 @@ type configOptions struct {
 	queueSize   int
 	followLinks bool
 	respect429  bool
+	dryRun      bool
 	verbose     bool
 }
 
@@ -242,6 +246,7 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	}
 	cfg.FollowLinks = opts.followLinks
 	cfg.Respect429 = opts.respect429
+	cfg.DryRun = opts.dryRun
 	cfg.Verbose = opts.verbose
 
 	// Merge with defaults for any missing values
@@ -283,6 +288,9 @@ OPTIONS:
     -respect-429
         Respect HTTP 429 with exponential backoff (default: true)
         Backoff: 1s, 2s, 4s, 8s, 16s (max 30s)
+    -dry-run
+        Discover URLs without making test requests
+        Shows estimated test scope and discovered URLs
     -output string
         Output file for results (JSON format)
     -verbose

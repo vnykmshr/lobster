@@ -195,8 +195,33 @@ func (t *Tester) worker(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
+// processDryRun handles URL discovery in dry-run mode (no actual HTTP requests)
+func (t *Tester) processDryRun(task domain.URLTask) {
+	atomic.AddInt64(&t.results.TotalRequests, 1)
+
+	// In dry-run mode, we mark all URLs as "discovered"
+	validation := domain.URLValidation{
+		URL:        task.URL,
+		StatusCode: 0, // No actual request made
+		Depth:      task.Depth,
+		IsValid:    false, // Unknown in dry-run
+	}
+
+	t.addValidation(validation)
+
+	t.logger.Info("URL discovered (dry-run)",
+		"url", util.SanitizeURLDefault(task.URL),
+		"depth", task.Depth)
+}
+
 // processURL performs a single URL request and records results
 func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
+	// In dry-run mode, just record the URL without making requests
+	if t.config.DryRun {
+		t.processDryRun(task)
+		return
+	}
+
 	// Apply rate limiting using goflow's token bucket
 	if t.rateLimiter != nil {
 		if err := t.rateLimiter.Wait(ctx); err != nil {
