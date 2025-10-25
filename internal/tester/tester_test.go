@@ -982,3 +982,210 @@ func TestApplyAuthentication_IntegrationWithHTTPRequest(t *testing.T) {
 		t.Error("Authentication token was not sent to server")
 	}
 }
+
+// TestNew_InsecureSkipVerify tests the InsecureSkipVerify configuration
+func TestNew_InsecureSkipVerify(t *testing.T) {
+	config := testConfig("https://example.com")
+	config.InsecureSkipVerify = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Verify HTTP client has custom transport
+	if tester.client.Transport == nil {
+		t.Error("Expected custom transport for InsecureSkipVerify")
+	}
+}
+
+// TestMakeHTTPRequestWithRetry_429Backoff tests HTTP 429 retry with exponential backoff
+func TestMakeHTTPRequestWithRetry_429Backoff(t *testing.T) {
+	var requestCount int64
+	retryTimes := []time.Time{}
+	var mu sync.Mutex
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt64(&requestCount, 1)
+		mu.Lock()
+		retryTimes = append(retryTimes, time.Now())
+		mu.Unlock()
+
+		// Return 429 for first 2 requests, then 200
+		if count <= 2 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte("Too Many Requests"))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("Success"))
+		}
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.Respect429 = true // Enable 429 retry
+	config.NoProgress = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, _, err := tester.makeHTTPRequestWithRetry(ctx, server.URL)
+	if err != nil {
+		t.Fatalf("Expected successful retry, got error: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Verify retries happened
+	if atomic.LoadInt64(&requestCount) != 3 {
+		t.Errorf("Expected 3 requests (2 retries + 1 success), got %d", requestCount)
+	}
+
+	// Verify status code is eventually 200
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200 after retry, got %d", resp.StatusCode)
+	}
+
+	// Verify exponential backoff timing
+	mu.Lock()
+	defer mu.Unlock()
+	if len(retryTimes) >= 2 {
+		// Time between first and second request should be ~1 second (initial backoff)
+		timeBetween := retryTimes[1].Sub(retryTimes[0])
+		if timeBetween < 900*time.Millisecond {
+			t.Errorf("Expected ~1s backoff between first two requests, got %v", timeBetween)
+		}
+	}
+}
+
+// TestMakeHTTPRequestWithRetry_429MaxRetries tests that max retries is enforced
+func TestMakeHTTPRequestWithRetry_429MaxRetries(t *testing.T) {
+	var requestCount int64
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		// Always return 429
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Too Many Requests"))
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.Respect429 = true
+	config.NoProgress = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	resp, _, err := tester.makeHTTPRequestWithRetry(ctx, server.URL)
+	if err != nil {
+		t.Fatalf("Expected response (not error) after max retries, got: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Should have made 5 attempts (initial + 4 retries) + 1 final request
+	count := atomic.LoadInt64(&requestCount)
+	if count != 6 {
+		t.Errorf("Expected 6 requests (5 attempts + 1 final), got %d", count)
+	}
+
+	// Final response should still be 429
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Errorf("Expected final status 429, got %d", resp.StatusCode)
+	}
+}
+
+// TestMakeHTTPRequestWithRetry_ContextCancellation tests context cancellation during retry backoff
+func TestMakeHTTPRequestWithRetry_ContextCancellation(t *testing.T) {
+	var requestCount int64
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Too Many Requests"))
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.Respect429 = true
+	config.NoProgress = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Create context with very short timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	_, _, err = tester.makeHTTPRequestWithRetry(ctx, server.URL)
+	if err == nil {
+		t.Error("Expected context cancellation error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "context deadline exceeded") {
+		t.Errorf("Expected context deadline exceeded error, got: %v", err)
+	}
+
+	// Should have made at least one request before context cancellation
+	count := atomic.LoadInt64(&requestCount)
+	if count < 1 {
+		t.Errorf("Expected at least 1 request before cancellation, got %d", count)
+	}
+}
+
+// TestMakeHTTPRequestWithRetry_Respect429Disabled tests that 429 retry is skipped when disabled
+func TestMakeHTTPRequestWithRetry_Respect429Disabled(t *testing.T) {
+	var requestCount int64
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&requestCount, 1)
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Too Many Requests"))
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.Respect429 = false // Disable 429 retry
+	config.NoProgress = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, _, err := tester.makeHTTPRequestWithRetry(ctx, server.URL)
+	if err != nil {
+		t.Fatalf("Expected response, got error: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Should only make 1 request (no retries)
+	count := atomic.LoadInt64(&requestCount)
+	if count != 1 {
+		t.Errorf("Expected exactly 1 request with Respect429=false, got %d", count)
+	}
+
+	// Status should be 429 (no retry)
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Errorf("Expected status 429, got %d", resp.StatusCode)
+	}
+}
