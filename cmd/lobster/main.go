@@ -508,32 +508,32 @@ func validateRateLimit(rate *float64) error {
 
 	// Rate of 0 means no rate limiting (unlimited)
 	if *rate == 0 {
-		fmt.Fprintf(os.Stderr, "\n⚠️  WARNING: No rate limiting enabled (rate=0)\n")
-		fmt.Fprintf(os.Stderr, "   This will send requests as fast as possible.\n")
-		fmt.Fprintf(os.Stderr, "   Make sure you have permission to test the target server.\n\n")
+		fmt.Fprintf(os.Stderr, "\nWARNING: No rate limiting enabled (rate=0)\n")
+		fmt.Fprintf(os.Stderr, "This will send requests as fast as possible.\n")
+		fmt.Fprintf(os.Stderr, "Make sure you have permission to test the target server.\n\n")
 		return nil
 	}
 
 	// Enforce minimum rate to prevent extremely slow tests
 	if *rate > 0 && *rate < minRate {
-		fmt.Fprintf(os.Stderr, "\n⚠️  WARNING: Rate %.2f req/s is below minimum %.2f req/s\n", *rate, minRate)
-		fmt.Fprintf(os.Stderr, "   Adjusting to minimum rate of %.2f req/s\n", minRate)
-		fmt.Fprintf(os.Stderr, "   Rationale: Extremely low rates may indicate configuration error.\n\n")
+		fmt.Fprintf(os.Stderr, "\nWARNING: Rate %.2f req/s is below minimum %.2f req/s\n", *rate, minRate)
+		fmt.Fprintf(os.Stderr, "Adjusting to minimum rate of %.2f req/s\n", minRate)
+		fmt.Fprintf(os.Stderr, "Rationale: Extremely low rates may indicate configuration error.\n\n")
 		*rate = minRate
 		return nil
 	}
 
 	// Warn about very low rates and prompt for confirmation if interactive
 	if *rate < warnRate {
-		fmt.Fprintf(os.Stderr, "\n⚠️  WARNING: Low rate limit detected (%.2f req/s)\n", *rate)
-		fmt.Fprintf(os.Stderr, "   This will send requests very slowly:\n")
-		fmt.Fprintf(os.Stderr, "   - %.2f requests per second\n", *rate)
-		fmt.Fprintf(os.Stderr, "   - ~%.0f requests per minute\n", *rate*60)
-		fmt.Fprintf(os.Stderr, "   - Test may take a long time to complete\n\n")
+		fmt.Fprintf(os.Stderr, "\nWARNING: Low rate limit detected (%.2f req/s)\n", *rate)
+		fmt.Fprintf(os.Stderr, "This will send requests very slowly:\n")
+		fmt.Fprintf(os.Stderr, "- %.2f requests per second\n", *rate)
+		fmt.Fprintf(os.Stderr, "- ~%.0f requests per minute\n", *rate*60)
+		fmt.Fprintf(os.Stderr, "- Test may take a long time to complete\n\n")
 
 		// If interactive terminal, prompt for confirmation
 		if isInteractiveTerminal() {
-			fmt.Fprintf(os.Stderr, "   Do you want to continue with this rate? (y/N): ")
+			fmt.Fprintf(os.Stderr, "Do you want to continue with this rate? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
 			if err != nil {
@@ -545,7 +545,7 @@ func validateRateLimit(rate *float64) error {
 			}
 			fmt.Fprintf(os.Stderr, "\n")
 		} else {
-			fmt.Fprintf(os.Stderr, "   Continuing in non-interactive mode...\n\n")
+			fmt.Fprintf(os.Stderr, "Continuing in non-interactive mode...\n\n")
 		}
 	}
 

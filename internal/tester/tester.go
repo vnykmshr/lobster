@@ -77,7 +77,7 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 
 	// Configure TLS if InsecureSkipVerify is enabled
 	if config.InsecureSkipVerify {
-		logger.Warn("⚠️  INSECURE: TLS certificate verification is disabled. Use only for testing with self-signed certificates!")
+		logger.Warn("INSECURE: TLS certificate verification is disabled. Use only for testing with self-signed certificates!")
 		httpClient.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true, //nolint:gosec // Intentionally insecure for testing self-signed certs
@@ -99,7 +99,7 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 			logger.Debug("No robots.txt found, all paths allowed")
 		}
 	} else {
-		logger.Warn("⚠️  Ignoring robots.txt directives. Please ensure you have permission to test this site!")
+		logger.Warn("WARNING: Ignoring robots.txt directives. Please ensure you have permission to test this site!")
 	}
 
 	return &Tester{
