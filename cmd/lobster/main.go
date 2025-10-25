@@ -36,7 +36,7 @@ func main() {
 		queueSize         = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
 		respect429        = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
 		dryRun            = flag.Bool("dry-run", false, "Discover URLs without making test requests")
-		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "⚠️  INSECURE: Skip TLS certificate verification")
+		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "INSECURE: Skip TLS certificate verification")
 		ignoreRobots      = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
 		outputFile        = flag.String("output", "", "Output file for results (JSON)")
 		verbose           = flag.Bool("verbose", false, "Verbose logging")
@@ -101,7 +101,7 @@ func main() {
 	if cfg.InsecureSkipVerify {
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                       ⚠️  SECURITY WARNING ⚠️                        ║\n")
+		fmt.Fprintf(os.Stderr, "║                        SECURITY WARNING                            ║\n")
 		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
 		fmt.Fprintf(os.Stderr, "║  TLS certificate verification is DISABLED (-insecure-skip-verify)  ║\n")
 		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
@@ -120,7 +120,7 @@ func main() {
 	if cfg.IgnoreRobots {
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                        ⚠️  ETHICAL WARNING ⚠️                        ║\n")
+		fmt.Fprintf(os.Stderr, "║                        ETHICAL WARNING                             ║\n")
 		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
 		fmt.Fprintf(os.Stderr, "║  Ignoring robots.txt directives (-ignore-robots)                   ║\n")
 		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
@@ -392,7 +392,7 @@ OPTIONS:
         Discover URLs without making test requests
         Shows estimated test scope and discovered URLs
     -insecure-skip-verify
-        ⚠️  INSECURE: Skip TLS certificate verification
+        INSECURE: Skip TLS certificate verification
         Use ONLY for testing with self-signed certificates
         Makes you vulnerable to man-in-the-middle attacks!
     -ignore-robots
