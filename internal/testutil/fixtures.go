@@ -1,3 +1,4 @@
+// Package testutil provides shared test fixtures and utilities for use across test files.
 package testutil
 
 import (
