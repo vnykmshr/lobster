@@ -6,7 +6,7 @@
 
 **Repository**: https://github.com/vnykmshr/lobster
 **Version**: 0.1.0
-**Created**: 2024-10-24
+**Created**: 2025-10-24
 **License**: MIT
 
 ## Quick Context
@@ -20,7 +20,7 @@
 
 ### Origin Story
 
-Graduated from `markgo/examples/stress-test` on 2024-10-24. Originally built to test MarkGo blog performance, evolved into a general-purpose tool.
+Graduated from `markgo/examples/stress-test` on 2025-10-24. Originally built to test MarkGo blog performance, evolved into a general-purpose tool.
 
 ## Architecture
 
@@ -326,6 +326,6 @@ test(validator): add percentile calculation tests
 
 ---
 
-**Last Updated**: 2024-10-25
+**Last Updated**: 2025-10-26
 **Maintainer**: @vnykmshr
 **Status**: Active Development

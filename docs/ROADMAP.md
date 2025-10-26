@@ -356,6 +356,6 @@ We welcome community input on this roadmap!
 
 ---
 
-**Last Updated**: 2024-10-26
-**Next Review**: 2024-11-26
+**Last Updated**: 2025-10-26
+**Next Review**: 2025-11-26
 **Owner**: @vnykmshr

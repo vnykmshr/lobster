@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Condensed README.md from 423→216 lines (49% reduction)
 - Condensed QUICKSTART.md from 267→130 lines (51% reduction)
 - Fixed coverage contradictions and claims in TESTING.md
-- Fixed future dates (2025→2024) and updated coverage numbers in DEVELOPMENT.md
+- Updated coverage numbers in DEVELOPMENT.md
 - Improved tester package coverage from 71.2% to 86.9%
 
 ### Removed
@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redundant documentation sections (use cases, tips, troubleshooting)
 - AI-generated content and emojis from documentation
 
-## [0.1.0] - 2024-10-24
+## [0.1.0] - 2025-10-24
 
 ### Added
 - Initial release after graduating from markgo/examples/stress-test
