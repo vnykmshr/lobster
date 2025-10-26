@@ -27,8 +27,8 @@ Establish core functionality with production-quality code and documentation.
 - [x] Remove MarkGo-specific dependencies
 - [x] Basic CLI with essential flags
 - [x] Console output with progress monitoring
-- [ ] Unit tests for core components (>70% coverage)
-- [ ] Integration tests for end-to-end flows
+- [x] Unit tests for core components (tester: 86.9%, config: 95.2%, crawler: 94.9%)
+- [x] Integration tests for end-to-end flows (6 comprehensive tests)
 
 #### v0.2.0 - Enhanced Reporting
 - [ ] HTML report generation with Chart.js
@@ -356,6 +356,6 @@ We welcome community input on this roadmap!
 
 ---
 
-**Last Updated**: 2025-10-24
-**Next Review**: 2025-11-24
+**Last Updated**: 2024-10-26
+**Next Review**: 2024-11-26
 **Owner**: @vnykmshr

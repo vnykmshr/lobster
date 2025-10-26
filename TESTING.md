@@ -65,239 +65,115 @@ func TestValidation(t *testing.T) {
 
 Target coverage by package:
 
-- Overall: 70%+ (currently 90%+)
-- Critical packages (tester, reporter, validator): 70%+
-- Domain models: 100% (pure logic, easy to test)
+- Overall: 70%+ (currently 30.2%)
+- Critical packages: tester 86.9%, reporter TBD, validator 51.2%
+- Domain models: 100%
 - Utility packages: 90%+
 
 Run coverage reports:
 
 ```bash
+# Fast tests only (skips slow integration tests)
+go test -short ./... -cover
+
+# Full test suite (includes slow tests)
 go test ./... -cover
+
+# Detailed coverage report
 go test ./... -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
 
 ### What to Test
 
-Focus on:
 - Business logic and algorithms
-- Error handling paths
+- Error handling paths (HTTP 429 retry, context cancellation, etc.)
 - Edge cases and boundary conditions
 - Public APIs and exported functions
-- Critical user workflows
+- Critical user workflows (crawl → test → report)
 
 ### What Not to Test
 
-Avoid testing:
 - Third-party library internals
 - Standard library behavior
-- Simple getters/setters
-- Trivial helper functions
-- Implementation details that may change
+- Trivial functions
 
 ## Running Tests
 
 ### Run All Tests
 
 ```bash
+# Fast tests only (recommended for development)
+go test -short ./...
+
+# Full test suite including slow integration tests
 go test ./...
 ```
 
 ### Run Tests with Coverage
 
 ```bash
-go test ./... -cover
+go test -short ./... -cover
 ```
 
 ### Run Tests with Race Detector
 
 ```bash
-go test ./... -race
+go test -short ./... -race
 ```
 
-The race detector finds data races and concurrency bugs. Always run before committing changes to concurrent code.
-
-### Run Specific Package Tests
+### Run Specific Package
 
 ```bash
 go test ./internal/tester -v
-go test ./internal/reporter -v -cover
 ```
 
-### Run Specific Test Function
+### Run Specific Test
 
 ```bash
 go test ./internal/tester -run TestProcessURL
-go test ./internal/validator -run TestValidation/valid_targets
 ```
 
-### Watch Mode
+## Test Categories
 
-Use a tool like `entr` for continuous testing during development:
+### Unit Tests
+Fast, isolated tests of individual functions. See `internal/tester/tester_test.go` for examples.
 
-```bash
-find . -name '*.go' | entr -c go test ./...
-```
-
-## Test Helpers
-
-### Test Server Setup
-
-For HTTP testing, use the httptest package:
+### Integration Tests
+End-to-end tests with real HTTP servers. Use `testing.Short()` to skip in fast mode:
 
 ```go
-server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
-    w.Write([]byte("test response"))
-}))
-defer server.Close()
-```
-
-### Test Configuration
-
-Use helper functions for common test configurations:
-
-```go
-func testConfig(baseURL string) domain.TesterConfig {
-    return domain.TesterConfig{
-        BaseURL:        baseURL,
-        Concurrency:    2,
-        RequestTimeout: 5 * time.Second,
-        UserAgent:      "TestAgent/1.0",
-        IgnoreRobots:   true, // Avoid network calls in tests
+func TestIntegration_FullWorkflow(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test in short mode")
     }
+    // ... test code
 }
 ```
 
-### Temporary Files
-
-Use t.TempDir() for test files:
-
-```go
-func TestReportGeneration(t *testing.T) {
-    tmpDir := t.TempDir() // Automatically cleaned up
-    outputPath := filepath.Join(tmpDir, "report.html")
-
-    err := reporter.GenerateHTML(outputPath)
-    if err != nil {
-        t.Fatalf("GenerateHTML failed: %v", err)
-    }
-}
-```
-
-## Writing Good Tests
-
-### Test Names
-
-Use descriptive names that explain what is being tested:
-
-```go
-// Good
-func TestMakeHTTPRequest_Success(t *testing.T)
-func TestParse_WithWildcardPatterns(t *testing.T)
-func TestValidation_FailsWhenResponseTimeTooSlow(t *testing.T)
-
-// Bad
-func TestHTTP(t *testing.T)
-func TestParse(t *testing.T)
-func TestValidation(t *testing.T)
-```
-
-### Assertions
-
-Keep assertions simple and clear:
-
-```go
-// Good
-if got != want {
-    t.Errorf("CalculateAverage() = %v, want %v", got, want)
-}
-
-// Bad
-if got != want {
-    t.Error("failed")
-}
-```
-
-### Setup and Teardown
-
-Use t.Cleanup for resource cleanup:
-
-```go
-func TestWithCleanup(t *testing.T) {
-    resource := acquireResource()
-    t.Cleanup(func() {
-        resource.Release()
-    })
-
-    // Test code here
-}
-```
-
-### Test Isolation
-
-Each test should be independent:
-
-- Don't rely on test execution order
-- Don't share state between tests
-- Clean up resources after each test
-- Use fresh instances for each test
+### Slow Tests
+Tests taking >2 seconds (rate limiting, slow requests). Always skipped with `-short` flag.
 
 ## Continuous Integration
 
-Tests run automatically on every commit via GitHub Actions. The CI pipeline:
+CI pipeline (in progress):
+- Run fast tests: `go test -short ./...`
+- Check coverage
+- Run linters: `golangci-lint run`
 
-1. Runs all tests with race detector
-2. Generates coverage reports
-3. Checks for lint errors
-4. Builds the binary
+## Current Test Suite
 
-Pull requests must pass all tests before merging.
+**Package Coverage** (as of last run):
+- `internal/tester`: 86.9%
+- `internal/config`: 95.2%
+- `internal/crawler`: 94.9%
+- `internal/validator`: 51.2%
+- `internal/domain`: 100%
+- **Overall**: 30.2%
 
-## Test Performance
+**Test Breakdown**:
+- Unit tests: ~50 tests
+- Integration tests: 6 tests (skipped with `-short`)
+- Slow tests: 2 tests (skipped with `-short`)
 
-Keep tests fast:
-
-- Unit tests should complete in milliseconds
-- Integration tests should complete in seconds
-- The full test suite should run in under 10 seconds
-
-If tests are slow:
-- Check for unnecessary sleeps or waits
-- Mock slow external dependencies
-- Reduce test server response times
-- Parallelize independent tests with t.Parallel()
-
-## Troubleshooting
-
-### Flaky Tests
-
-If tests fail intermittently:
-- Check for race conditions (run with -race)
-- Look for timing dependencies
-- Verify proper cleanup
-- Check for shared state
-
-### Coverage Gaps
-
-To find untested code:
-```bash
-go test ./... -coverprofile=coverage.out
-go tool cover -func=coverage.out | grep -v 100.0%
-```
-
-Focus on covering error paths and edge cases first.
-
-## Contributing Tests
-
-When contributing:
-
-1. Add tests for new features
-2. Add tests for bug fixes
-3. Maintain or improve coverage
-4. Run tests locally before pushing
-5. Ensure tests pass with -race flag
-6. Keep tests simple and readable
-
-See CONTRIBUTING.md for more details.
+Run `go test -short ./... -cover` to verify current coverage.

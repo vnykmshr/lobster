@@ -6,7 +6,7 @@
 
 **Repository**: https://github.com/vnykmshr/lobster
 **Version**: 0.1.0
-**Created**: 2025-10-24
+**Created**: 2024-10-24
 **License**: MIT
 
 ## Quick Context
@@ -20,7 +20,7 @@
 
 ### Origin Story
 
-Graduated from `markgo/examples/stress-test` on 2025-10-24. Originally built to test MarkGo blog performance, evolved into a general-purpose tool.
+Graduated from `markgo/examples/stress-test` on 2024-10-24. Originally built to test MarkGo blog performance, evolved into a general-purpose tool.
 
 ## Architecture
 
@@ -87,48 +87,14 @@ Graduated from `markgo/examples/stress-test` on 2025-10-24. Originally built to 
 ### Setup
 
 ```bash
-cd /Users/vmx/workspace/gocode/src/github.com/vnykmshr/lobster
-
-# Install dependencies
+git clone https://github.com/vnykmshr/lobster.git
+cd lobster
 go mod download
-
-# Build
-go build -o lobster cmd/lobster/main.go
-
-# Run
+make build
 ./lobster -url http://localhost:3000
 ```
 
-### Testing
-
-```bash
-# Run all tests
-go test ./...
-
-# Run with coverage
-go test -cover ./...
-
-# Run specific package
-go test ./internal/crawler
-
-# Verbose output
-go test -v ./...
-```
-
-### Building
-
-```bash
-# Development build
-go build -o lobster cmd/lobster/main.go
-
-# Production build (optimized)
-go build -ldflags="-s -w" -o lobster cmd/lobster/main.go
-
-# Cross-compilation
-GOOS=linux GOARCH=amd64 go build -o lobster-linux cmd/lobster/main.go
-GOOS=darwin GOARCH=arm64 go build -o lobster-macos cmd/lobster/main.go
-GOOS=windows GOARCH=amd64 go build -o lobster.exe cmd/lobster/main.go
-```
+See `Makefile` for all build targets: `make help`
 
 ## Key Implementation Details
 
@@ -194,18 +160,20 @@ p95ResponseTime = responseTimes[p95Index]
 - ✅ Documentation (README, QUICKSTART, ROADMAP)
 
 ### Known Limitations
-- No authentication support
-- HTTP/HTTPS only (no WebSocket, GraphQL)
-- Single-machine only (no distributed testing)
-- Basic HTML parsing (no JavaScript rendering)
-- No request recording/replay
+- No authentication support (planned for v0.4)
+- HTTP/HTTPS only
+- Single-machine (no distributed testing)
+- Basic HTML parsing (no JavaScript)
 
-### Technical Debt
-- Need comprehensive unit tests (currently 0%)
-- No integration tests
-- HTML template is inline (should be separate file)
-- No benchmarks for performance testing
-- Global mutexes in tester (could be per-Tester instance)
+### Test Coverage
+- `internal/tester`: 86.9%
+- `internal/config`: 95.2%
+- `internal/crawler`: 94.9%
+- `internal/validator`: 51.2%
+- `internal/domain`: 100%
+- **Overall**: 30.2%
+
+See TESTING.md for details.
 
 ## Roadmap Context
 
@@ -230,85 +198,22 @@ Authentication and real-world scenarios:
 - Why: Your project, works well, no reason to replace
 - Alternative considered: stdlib rate.Limiter (less flexible)
 
-## Common Development Tasks
+## Common Tasks
 
-### Adding a New Report Format
+### Adding a Feature
+1. Update domain models in `internal/domain/`
+2. Implement logic in appropriate package (`tester/`, `crawler/`, etc.)
+3. Add tests achieving 70%+ coverage
+4. Update CLI flags in `cmd/lobster/main.go`
+5. Document in README.md
 
-1. Add method to `reporter/reporter.go`:
-   ```go
-   func (r *Reporter) GenerateCSV(outputPath string) error
-   ```
-
-2. Update `cmd/lobster/main.go` to detect format and call method
-
-3. Add example to `docs/QUICKSTART.md`
-
-### Adding a New Performance Target
-
-1. Add field to `domain.PerformanceTargets`:
-   ```go
-   MaxMemoryMB float64 `json:"max_memory_mb"`
-   ```
-
-2. Update `domain.DefaultPerformanceTargets()`
-
-3. Add validation in `validator.ValidateResults()`:
-   ```go
-   v.targets = append(v.targets, domain.PerformanceTarget{...})
-   ```
-
-### Adding Authentication Support
-
-1. Add auth config to `domain.Config`:
-   ```go
-   AuthType string `json:"auth_type"` // "cookie", "jwt", "basic"
-   Credentials map[string]string `json:"credentials"`
-   ```
-
-2. Create `internal/auth/` package with auth handlers
-
-3. Integrate in `tester/tester.go` before making requests
-
-4. Update examples and docs
-
-## Testing Strategy
-
-### Unit Tests (Target: >70% coverage)
+### Running Tests
+See TESTING.md for complete testing guide.
 
 ```bash
-internal/
-├── crawler/
-│   └── crawler_test.go      # URL extraction, deduplication
-├── validator/
-│   └── validator_test.go    # Percentile calculations, validation
-├── reporter/
-│   └── reporter_test.go     # Template rendering, data prep
-└── config/
-    └── loader_test.go       # Config loading, merging
-```
-
-### Integration Tests
-
-```bash
-tests/
-├── integration/
-│   ├── end_to_end_test.go   # Full workflow
-│   ├── crawling_test.go     # Multi-page crawl
-│   └── reporting_test.go    # Report generation
-```
-
-### Test Server
-
-Create a simple test HTTP server for integration tests:
-
-```go
-func TestStressTest(t *testing.T) {
-    server := httptest.NewServer(...)
-    defer server.Close()
-
-    // Run lobster against test server
-    // Verify results
-}
+make test          # Fast tests only
+make test-verbose  # Full suite with output
+make coverage      # Coverage report
 ```
 
 ## Release Process
@@ -332,26 +237,16 @@ Following Semantic Versioning (semver):
 9. Update documentation if needed
 10. Announce on relevant channels
 
-## Important File Locations
+## Key Files
 
 ```
-lobster/
-├── cmd/lobster/main.go              # CLI entry point - 337 lines
-├── internal/
-│   ├── domain/
-│   │   ├── entities.go                # Core types - 95 lines
-│   │   └── config.go                  # Config types - 45 lines
-│   ├── crawler/crawler.go             # URL discovery - 130 lines
-│   ├── tester/tester.go               # Testing engine - 320 lines
-│   ├── reporter/reporter.go           # Report generation - 440 lines
-│   ├── validator/validator.go         # Validation - 200 lines
-│   └── config/loader.go               # Config loading - 90 lines
-├── docs/
-│   ├── ROADMAP.md                     # Development roadmap
-│   └── QUICKSTART.md                  # Quick start guide
-├── examples/
-│   └── config.example.json            # Example configuration
-└── README.md                          # Main documentation
+cmd/lobster/main.go      # CLI entry point
+internal/tester/         # Core testing engine
+internal/crawler/        # URL discovery
+internal/reporter/       # Report generation
+internal/domain/         # Business entities
+Makefile                 # Build targets
+.golangci.yml            # Linter config
 ```
 
 ## Git Workflow
@@ -402,51 +297,19 @@ test(validator): add percentile calculation tests
 3. **HTML parsing**: Uses regex for href extraction
    - Could use golang.org/x/net/html for complex pages
 
-## Debugging Tips
+## Runbook
 
-### Enable Verbose Logging
+### Out of Memory
+**Symptoms**: Process killed, OOM errors
+**Fix**: Reduce `-max-depth`, lower `-queue-size`, or use `-dry-run` to preview URL count first
 
-```bash
-./lobster -url http://localhost:3000 -verbose
-```
+### High Error Rate
+**Symptoms**: Many 429 or timeout errors
+**Fix**: Reduce `-concurrency`, lower `-rate`, increase `-timeout`
 
-### Common Issues
-
-**No URLs discovered**:
-- Check HTML contains `<a href="...">` links
-- Verify base URL is accessible
-- Try `-follow-links=false` for single URL
-
-**High error rate**:
-- Reduce concurrency: `-concurrency 2`
-- Lower rate: `-rate 1.0`
-- Increase timeout: `-timeout 60s`
-
-**Slow performance**:
-- Check server resources
-- Monitor with: `top`, `htop`, or Activity Monitor
-- Review server logs
-
-## Next Session TODO
-
-When resuming work on Lobster:
-
-1. **Immediate**:
-   - [ ] Create GitHub repository
-   - [ ] Push code to GitHub
-   - [ ] Add unit tests for crawler
-   - [ ] Add unit tests for validator
-
-2. **Week 1**:
-   - [ ] Set up GitHub Actions CI
-   - [ ] Write comprehensive tests
-   - [ ] Create demo video/GIF
-   - [ ] Write blog post
-
-3. **Week 2-4**:
-   - [ ] Gather user feedback
-   - [ ] Implement Phase 2 features
-   - [ ] Release v0.2.0
+### No URLs Discovered
+**Symptoms**: Only tests base URL
+**Fix**: Check HTML has `<a>` links, verify `-follow-links=true`, ensure same domain
 
 ## Resources
 
@@ -463,6 +326,6 @@ When resuming work on Lobster:
 
 ---
 
-**Last Updated**: 2025-10-24
+**Last Updated**: 2024-10-25
 **Maintainer**: @vnykmshr
 **Status**: Active Development

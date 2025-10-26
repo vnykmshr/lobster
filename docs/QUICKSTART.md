@@ -90,142 +90,31 @@ Run with config:
 ./lobster -config config.json
 ```
 
-## Common Use Cases
-
-### Development Validation
-
-Quick check during development:
-```bash
-./lobster -url http://localhost:3000 -duration 30s -concurrency 5
-```
-
-### Pre-Deployment Testing
-
-Comprehensive test before release:
-```bash
-./lobster \
-  -url https://staging.example.com \
-  -duration 10m \
-  -concurrency 25 \
-  -max-depth 5 \
-  -output pre-deploy.json
-```
-
-### Load Testing
-
-Simulate high traffic:
-```bash
-./lobster \
-  -url https://example.com \
-  -concurrency 100 \
-  -duration 15m \
-  -rate 50 \
-  -output load-test.json
-```
-
-### CI/CD Integration
-
-```bash
-#!/bin/bash
-# Start your app
-./start-app.sh &
-APP_PID=$!
-
-# Wait for app to be ready
-sleep 5
-
-# Run stress test
-./lobster \
-  -url http://localhost:3000 \
-  -duration 2m \
-  -concurrency 10 \
-  -output ci-results.json
-
-# Parse results and fail if targets not met
-if ! grep -q '"overall_status":"PRODUCTION_READY"' ci-results.json; then
-  echo "Performance targets not met!"
-  kill $APP_PID
-  exit 1
-fi
-
-kill $APP_PID
-```
+**Expected Output:**
+Lobster validates performance against configured targets and reports pass/fail status.
 
 ## Understanding Results
 
-### Console Output
+Console output includes summary statistics and performance validation:
 
 ```
 === STRESS TEST RESULTS ===
-Duration: 2m0s
-URLs Discovered: 42
-Total Requests: 2,450
-Successful Requests: 2,442
-Failed Requests: 8
-Average Response Time: 18.7ms
-Requests/Second: 20.4
-Success Rate: 99.67%
-```
+Duration: 2m0s | URLs Discovered: 42 | Total Requests: 2,450
+Successful: 2,442 | Failed: 8 | Success Rate: 99.67%
+Average Response Time: 18.7ms | Requests/Second: 20.4
 
-### Performance Validation
-
-```
 🎯 PERFORMANCE TARGET VALIDATION
-============================================================
 ✅ PASS Requests per Second:         20.4 req/s
 ✅ PASS Average Response Time:        18.7ms
-✅ PASS 95th Percentile Response Time: 35.2ms
-✅ PASS Success Rate:                 99.67%
-
+✅ PASS 95th Percentile Response:    35.2ms
+✅ PASS Success Rate:                99.67%
 Overall: 4/4 targets met (100.0%)
-🎉 ALL PERFORMANCE TARGETS MET!
 ```
 
-### Key Metrics
-
-- **Success Rate**: Should be >99% for production
-- **Avg Response Time**: Lower is better (<50ms is excellent)
-- **p95 Response Time**: 95% of requests faster than this
-- **Requests/Second**: Throughput capacity
-- **Error Rate**: Should be <1% for production
-
-## Tips & Best Practices
-
-### 1. Start Small
-
-Begin with low concurrency and short duration:
-```bash
-./lobster -url http://localhost:3000 -concurrency 2 -duration 30s
-```
-
-### 2. Respect Server Limits
-
-Use rate limiting to avoid overwhelming your server:
-```bash
-./lobster -url http://localhost:3000 -rate 2.0
-```
-
-### 3. Monitor Your Application
-
-While running tests, monitor:
-- CPU usage
-- Memory consumption
-- Database connections
-- Response times
-
-### 4. Test Realistic Scenarios
-
-- Enable link following to simulate real user behavior
-- Adjust concurrency to match expected traffic
-- Use appropriate rate limits
-
-### 5. Analyze Failures
-
-If you see failures:
-1. Check the error details in the report
-2. Look for patterns (specific URLs, times)
-3. Review server logs
-4. Adjust concurrency or rate limits
+**Key Metrics:**
+- **Success Rate**: >99% for production
+- **p95 Response Time**: 95% of requests faster than this value
+- **Requests/Second**: Sustained throughput capacity
 
 ## Next Steps
 
@@ -234,33 +123,8 @@ If you see failures:
 - Review the [roadmap](ROADMAP.md) for upcoming features
 - [Contribute](../CONTRIBUTING.md) to the project
 
-## Troubleshooting
-
-### High Error Rate
-
-- Reduce concurrency: `-concurrency 2`
-- Lower request rate: `-rate 1.0`
-- Increase timeout: `-timeout 60s`
-- Check server resources
-
-### Slow Performance
-
-- Monitor server CPU/memory
-- Check database query performance
-- Review application logs
-- Consider caching strategies
-
-### No URLs Discovered
-
-- Verify application is running
-- Check base URL is correct
-- Ensure HTML contains links
-- Try disabling link following: `-follow-links=false`
-
 ## Getting Help
 
-- 📖 [Full Documentation](../README.md)
-- 💬 [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
-- 🐛 [Report Issues](https://github.com/vnykmshr/lobster/issues)
-
-Happy stress testing! 🚀
+- [Full Documentation](../README.md)
+- [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- [Report Issues](https://github.com/vnykmshr/lobster/issues)

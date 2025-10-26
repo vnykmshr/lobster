@@ -1,69 +1,23 @@
 # Lobster
 
-> The stress tester that thinks like a user
-
-**Lobster** is an intelligent web application stress testing tool that automatically discovers your application's URLs through crawling and validates performance under concurrent load. Unlike traditional stress testing tools that require manual URL configuration, Lobster explores your application like a real user would, providing comprehensive performance validation with zero configuration.
+**Lobster** is an intelligent web stress testing tool that automatically discovers URLs by crawling your application and validates performance under load. Point it at your app, and it handles the rest—zero configuration required.
 
 ## Why Lobster?
 
-Traditional stress testing tools are either too simple (just hammer a single endpoint) or too complex (requiring extensive scripting and setup). Lobster fills the gap:
-
-- **Zero Configuration**: Point it at your app and go
-- **Intelligent Discovery**: Automatically crawls and discovers all URLs
-- **Production-Ready Validation**: Get clear pass/fail criteria, not just raw metrics
-- **Beautiful Reports**: HTML and JSON reports with visualizations out of the box
-- **Developer-Friendly**: Built for CI/CD pipelines and local development
+- **Zero Config**: Point and shoot
+- **Auto-Discovery**: Crawls and finds all URLs
+- **Pass/Fail Validation**: Not just metrics
+- **Beautiful Reports**: HTML + JSON + console
+- **CI/CD Ready**: Fast, reliable, scriptable
 
 ## Features
 
-### Core Capabilities
-
-🔍 **Automatic URL Discovery**
-- Intelligent crawling that follows links like a real user
-- Configurable depth and same-domain restriction
-- Deduplication and cycle prevention
-
-⚡ **Concurrent Load Testing**
-- Configurable concurrency levels
-- Smart rate limiting to respect server capacity
-- Token bucket algorithm for smooth load distribution
-
-📊 **Comprehensive Reporting**
-- Real-time progress monitoring
-- HTML reports with interactive charts
-- JSON output for programmatic analysis
-- Response time distribution and percentile analysis
-
-🎯 **Performance Validation**
-- Configurable performance targets
-- Automatic pass/fail criteria
-- Competitive benchmarking support
-- Production-readiness scoring
-
-📈 **Rich Metrics**
-- Response time statistics (avg, min, max, p95, p99)
-- Throughput (requests per second)
-- Success/failure rates
-- Slow request identification
-- Error categorization and tracking
-
-### Advanced Features
-
-🔒 **Smart Rate Limiting**
-- Token bucket algorithm via [goflow](https://github.com/vnykmshr/goflow)
-- Respects server rate limits
-- Prevents overwhelming applications during testing
-
-🔗 **Link Following**
-- HTML parsing for href extraction
-- Relative URL resolution
-- Configurable crawl depth
-- Internal link filtering
-
-⏱️ **Flexible Duration**
-- Time-based test execution
-- Context-aware cancellation
-- Graceful shutdown
+- **Auto URL Discovery**: Crawls and discovers all linked pages
+- **Concurrent Testing**: Configurable workers with rate limiting
+- **Performance Validation**: Pass/fail against targets (p95, p99, success rate)
+- **Rich Reports**: HTML (charts), JSON (API), console (real-time)
+- **Smart Rate Limiting**: Token bucket via [goflow](https://github.com/vnykmshr/goflow)
+- **robots.txt Compliance**: Respects website preferences by default
 
 ## Quick Start
 
@@ -89,99 +43,15 @@ Test your local application:
 lobster -url http://localhost:3000
 ```
 
-That's it! Lobster will:
-1. Crawl your application starting from the base URL
-2. Discover all linked pages
-3. Generate concurrent requests
-4. Validate performance
-5. Generate beautiful HTML and JSON reports
+Lobster crawls your app, tests all discovered URLs under load, and generates reports.
 
-### Common Use Cases
-
-**Development Validation**
-```bash
-# Quick check during development
-lobster -url http://localhost:3000 -duration 30s -concurrency 5
-```
-
-**Pre-Deployment Testing**
-```bash
-# Comprehensive test before release
-lobster -url https://staging.example.com \
-  -duration 10m \
-  -concurrency 25 \
-  -max-depth 5 \
-  -output pre-deploy-results.json
-```
-
-**CI/CD Integration**
-```bash
-# Run in CI pipeline
-lobster -url http://localhost:3000 \
-  -duration 2m \
-  -concurrency 10 \
-  -output ci-results.json
-```
-
-**High-Load Stress Testing**
-```bash
-# Simulate high traffic
-lobster -url https://example.com \
-  -concurrency 100 \
-  -duration 15m \
-  -rate 50 \
-  -output load-test.json
-```
+For more examples, see [QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Configuration
 
-### Command-Line Options
+Key flags: `-url`, `-concurrency`, `-duration`, `-rate`, `-max-depth`, `-output`
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `-url` | `http://localhost:3000` | Base URL to test |
-| `-concurrency` | `5` | Number of concurrent workers |
-| `-duration` | `2m` | Test duration (e.g., 30s, 5m, 1h) |
-| `-timeout` | `30s` | Request timeout |
-| `-rate` | `2.0` | Requests per second limit |
-| `-user-agent` | `Lobster/1.0` | User agent string |
-| `-follow-links` | `true` | Follow links found in pages |
-| `-max-depth` | `3` | Maximum crawl depth |
-| `-output` | - | Output file for results (JSON) |
-| `-verbose` | `false` | Verbose logging |
-| `-config` | - | Path to configuration file |
-
-### Configuration File
-
-Create a JSON configuration file for complex scenarios:
-
-```json
-{
-  "base_url": "http://localhost:3000",
-  "concurrency": 20,
-  "duration": "5m",
-  "timeout": "30s",
-  "rate": 10.0,
-  "user_agent": "Lobster/1.0",
-  "follow_links": true,
-  "max_depth": 3,
-  "output_file": "results.json",
-  "verbose": true,
-  "performance_targets": {
-    "requests_per_second": 1000,
-    "avg_response_time_ms": 30,
-    "p95_response_time_ms": 50,
-    "p99_response_time_ms": 100,
-    "success_rate": 99.0,
-    "error_rate": 1.0
-  }
-}
-```
-
-Use with:
-```bash
-lobster -config config.json
-```
+Use `-config config.json` for complex setups. See `examples/config.example.json` for template.
 
 ## How It Works
 
@@ -218,27 +88,22 @@ Lobster follows **Clean Architecture** principles:
 
 ```
 lobster/
-├── cmd/lobster/          # Application entry point
+├── cmd/lobster/       # CLI entry point
 ├── internal/
-│   ├── domain/            # Core entities and interfaces
-│   ├── crawler/           # URL discovery logic
-│   ├── tester/            # Load testing engine
-│   ├── reporter/          # Report generation
-│   ├── validator/         # Performance validation
-│   └── config/            # Configuration management
-├── pkg/                   # Public reusable packages
-├── docs/                  # Documentation
-└── examples/              # Example configurations
+│   ├── domain/         # Core entities
+│   ├── crawler/        # URL discovery
+│   ├── tester/         # Load testing engine
+│   ├── reporter/       # Report generation
+│   ├── validator/      # Performance validation
+│   ├── config/         # Configuration
+│   └── testutil/       # Shared test helpers
+├── docs/               # Documentation
+└── examples/           # Example configs
 ```
 
-### Key Components
+**Domain** → **Crawler** → **Tester** → **Reporter** + **Validator**
 
-- **Domain Layer**: Core business entities (TestResults, URLTask, etc.)
-- **Crawler**: Intelligent URL discovery and link extraction
-- **Tester**: Concurrent request execution with rate limiting
-- **Reporter**: HTML and JSON report generation
-- **Validator**: Performance target validation and scoring
-- **Config**: Configuration loading and management
+See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
 
 ## Reports
 
@@ -298,125 +163,53 @@ Machine-readable format for integration:
 
 ## Use Cases
 
-### Development Testing
-Validate changes during development:
-- Quick smoke tests
-- Performance regression detection
-- Link validation
-
-### Pre-Deployment Validation
-Ensure production readiness:
-- Comprehensive stress testing
-- Performance target validation
-- Error detection
-
-### CI/CD Integration
-Automate testing in pipelines:
-- Fail builds on performance degradation
-- Track metrics over time
-- Generate compliance reports
-
-### Capacity Planning
-Understand application limits:
-- Determine max concurrent users
-- Identify bottlenecks
-- Plan infrastructure scaling
-
-### Competitive Analysis
-Benchmark against competitors:
-- Compare response times
-- Measure throughput differences
-- Validate performance claims
+- Development testing and regression detection
+- Pre-deployment validation
+- CI/CD performance gates
+- Capacity planning
 
 ## Roadmap
 
-See [ROADMAP.md](docs/ROADMAP.md) for detailed development plans.
+- **v0.1**: Core functionality ✅
+- **v0.2-0.3**: Enhanced reporting, configuration
+- **v0.4-0.6**: Authentication (cookie, JWT, OAuth)
+- **v0.7-0.9**: GraphQL, WebSockets, HAR replay
+- **v1.0+**: Distributed testing, CI/CD integration
 
-### Phase 1: Foundation (v0.1.0) ✅ Current
-- Core crawling and stress testing
-- Basic reporting (HTML/JSON)
-- Performance validation
-- Rate limiting
-
-### Phase 2: Authentication & Sessions (v0.2.0)
-- Cookie-based authentication
-- JWT support
-- Session management
-- Custom headers
-
-### Phase 3: Advanced Testing (v0.3.0)
-- GraphQL support
-- WebSocket testing
-- Request replay from HAR files
-- Custom scenarios
-
-### Phase 4: Enterprise Features (v0.4.0)
-- Distributed testing
-- Historical trend analysis
-- Advanced CI/CD integration
-- Plugin architecture
+See [ROADMAP.md](docs/ROADMAP.md) for details.
 
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Development Setup
+### Development
 
 ```bash
-# Clone the repository
 git clone https://github.com/vnykmshr/lobster.git
 cd lobster
-
-# Install dependencies
-go mod download
-
-# Run tests
-go test ./...
-
-# Build
-go build -o lobster cmd/lobster/main.go
-
-# Run locally
-./lobster -url http://localhost:3000
+make help      # See all targets
+make test      # Run tests
+make build     # Build binary
 ```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Responsible Use
 
-⚠️ **Important**: Lobster is a powerful testing tool that must be used responsibly and ethically.
+⚠️ **Only test systems you own or have written permission to test.**
 
-**Key Requirements:**
-- ✅ **Only test systems you own** or have explicit written permission to test
-- ✅ **Respect robots.txt** directives (enabled by default)
-- ✅ **Configure appropriate rate limits** to avoid service disruption
-- ✅ **Handle test reports securely** - they may contain sensitive URLs and data
+Unauthorized testing may violate computer fraud laws. Respect robots.txt (enabled by default), use rate limits, handle reports securely.
 
-**Unauthorized load testing may be illegal** and can result in:
-- Criminal prosecution under computer fraud laws
-- Civil lawsuits for damages
-- Termination of employment or contracts
-- Permanent legal and professional consequences
-
-Please read our comprehensive [Responsible Use Guidelines](RESPONSIBLE_USE.md) before using Lobster.
-
-**When in doubt, get it in writing.** A simple email confirmation from a system owner can protect you legally.
+See [RESPONSIBLE_USE.md](RESPONSIBLE_USE.md) for full guidelines.
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-## Acknowledgments
-
-- Built with [goflow](https://github.com/vnykmshr/goflow) for rate limiting
-- Inspired by the need for simple yet powerful web stress testing
-- Created to fill the gap between simple tools and enterprise solutions
-
 ## Support
 
-- 📖 Documentation: [docs/](docs/)
-- 🐛 Bug Reports: [GitHub Issues](https://github.com/vnykmshr/lobster/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
-- 🌟 Star the project if you find it useful!
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/vnykmshr/lobster/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
 
----
-
-**Made with ❤️ for developers who value simplicity and power**
+Built with [goflow](https://github.com/vnykmshr/goflow) • MIT License
