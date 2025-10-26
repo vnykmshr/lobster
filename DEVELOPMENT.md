@@ -5,7 +5,7 @@
 **Lobster** is an intelligent web application stress testing tool that automatically discovers URLs through crawling and validates performance under concurrent load.
 
 **Repository**: https://github.com/vnykmshr/lobster
-**Version**: 0.1.0
+**Version**: 1.0.0
 **Created**: 2025-10-24
 **License**: MIT
 
@@ -147,7 +147,7 @@ p95Index := int(float64(len(responseTimes)) * 0.95)
 p95ResponseTime = responseTimes[p95Index]
 ```
 
-## Current State (v0.1.0)
+## Current State (v1.0.0)
 
 ### Completed Features
 - ✅ Core stress testing engine
@@ -158,6 +158,7 @@ p95ResponseTime = responseTimes[p95Index]
 - ✅ CLI with comprehensive flags
 - ✅ Configuration file support
 - ✅ Documentation (README, QUICKSTART, ROADMAP)
+- ✅ Comprehensive test suite with 86.9% coverage in critical packages
 
 ### Known Limitations
 - No authentication support (planned for v0.4)

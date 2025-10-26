@@ -7,23 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-10-26
+
 ### Added
 - CHANGELOG.md to track version history following Keep a Changelog format
 - Makefile with comprehensive build targets (build, test, lint, coverage, install, CI)
 - Linter configuration (.golangci.yml) with 15+ enabled linters
 - EditorConfig (.editorconfig) for consistent code style across editors
 - Unit tests for domain package (100% coverage)
-- Unit tests for config package (95.2% coverage)
+- Unit tests for config package (95.5% coverage)
 - Unit tests for crawler package (94.9% coverage)
-- Unit tests for validator package (51.2% coverage)
+- Unit tests for validator package (92.5% coverage)
 - Unit tests for tester package (86.9% coverage)
+- Unit tests for reporter package (94.1% coverage)
+- Unit tests for robots package (87.5% coverage)
 - Overall test coverage: 30.2% of statements
 - Shared test fixtures in internal/testutil package
 - 6 comprehensive integration tests for end-to-end workflows
 - Skippable slow tests using testing.Short() pattern
 - HTTP 429 retry error path coverage tests
-- GitHub Actions CI/CD pipeline (pending)
-- Version injection support via ldflags in Makefile
+- Build-time version injection via ldflags
 
 ### Changed
 - Moved global package-level mutexes into Tester struct for better testability and isolation
@@ -35,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed coverage contradictions and claims in TESTING.md
 - Updated coverage numbers in DEVELOPMENT.md
 - Improved tester package coverage from 71.2% to 86.9%
+- Changed version from const to var for build-time injection
 
 ### Removed
 - Empty pkg/ directory that served no purpose
@@ -67,5 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated user agent: WebStress/1.0 → Lobster/1.0
 - Updated all documentation with new branding
 
-[Unreleased]: https://github.com/vnykmshr/lobster/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/vnykmshr/lobster/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/vnykmshr/lobster/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/vnykmshr/lobster/releases/tag/v0.1.0

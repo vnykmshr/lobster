@@ -20,7 +20,9 @@ import (
 	"github.com/vnykmshr/lobster/internal/validator"
 )
 
-const version = "0.1.0"
+// version is set at build time via ldflags: -X main.version=X.Y.Z
+// Default fallback if not set during build
+var version = "dev"
 
 func main() {
 	var (
@@ -494,9 +496,7 @@ DOCUMENTATION:
     Report issues: https://github.com/vnykmshr/lobster/issues
 
 VERSION:
-    Lobster v` + version + `
-
-Made with ❤️  for developers who value simplicity and power`)
+    Lobster v` + version)
 }
 
 // validateRateLimit enforces safe rate limiting to prevent accidental DoS
