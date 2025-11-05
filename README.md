@@ -103,7 +103,7 @@ lobster/
 
 **Domain** → **Crawler** → **Tester** → **Reporter** + **Validator**
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for details.
 
 ## Reports
 
@@ -180,7 +180,7 @@ See [ROADMAP.md](docs/ROADMAP.md) for details.
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ### Development
 
@@ -192,7 +192,7 @@ make test      # Run tests
 make build     # Build binary
 ```
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) and [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## Responsible Use
 
@@ -200,7 +200,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Unauthorized testing may violate computer fraud laws. Respect robots.txt (enabled by default), use rate limits, handle reports securely.
 
-See [RESPONSIBLE_USE.md](RESPONSIBLE_USE.md) for full guidelines.
+See [RESPONSIBLE_USE.md](docs/RESPONSIBLE_USE.md) for full guidelines.
 
 ## License
 

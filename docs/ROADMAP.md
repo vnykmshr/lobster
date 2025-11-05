@@ -351,7 +351,7 @@ We welcome community input on this roadmap!
 
 - 💬 **Discuss**: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
 - 🐛 **Issues**: [Feature Requests](https://github.com/vnykmshr/lobster/issues/new?labels=enhancement)
-- 🤝 **Contribute**: See [CONTRIBUTING.md](../CONTRIBUTING.md)
+- 🤝 **Contribute**: See [CONTRIBUTING.md](CONTRIBUTING.md)
 - 📧 **Contact**: Open an issue or discussion
 
 ---

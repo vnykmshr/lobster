@@ -121,7 +121,7 @@ Overall: 4/4 targets met (100.0%)
 - Read the [full documentation](../README.md)
 - Check out [example configurations](../examples/)
 - Review the [roadmap](ROADMAP.md) for upcoming features
-- [Contribute](../CONTRIBUTING.md) to the project
+- [Contribute](CONTRIBUTING.md) to the project
 
 ## Getting Help
 

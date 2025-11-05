@@ -174,7 +174,7 @@ p95ResponseTime = responseTimes[p95Index]
 - `internal/domain`: 100%
 - **Overall**: 30.2%
 
-See TESTING.md for details.
+See [TESTING.md](TESTING.md) for details.
 
 ## Roadmap Context
 
@@ -209,7 +209,7 @@ Authentication and real-world scenarios:
 5. Document in README.md
 
 ### Running Tests
-See TESTING.md for complete testing guide.
+See [TESTING.md](TESTING.md) for complete testing guide.
 
 ```bash
 make test          # Fast tests only
@@ -323,7 +323,7 @@ test(validator): add percentile calculation tests
 
 - **Issues**: https://github.com/vnykmshr/lobster/issues
 - **Discussions**: https://github.com/vnykmshr/lobster/discussions
-- **Pull Requests**: Welcome! See CONTRIBUTING.md
+- **Pull Requests**: Welcome! See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 
