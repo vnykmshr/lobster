@@ -133,12 +133,12 @@ func TestSaveToFile_Success(t *testing.T) {
 		OutputFile:  "output.json",
 		Verbose:     false,
 		PerformanceTargets: domain.PerformanceTargets{
-			RequestsPerSecond:   150,
-			AvgResponseTimeMs:   30,
-			P95ResponseTimeMs:   75,
-			P99ResponseTimeMs:   150,
-			SuccessRate:         98.0,
-			ErrorRate:           2.0,
+			RequestsPerSecond: 150,
+			AvgResponseTimeMs: 30,
+			P95ResponseTimeMs: 75,
+			P99ResponseTimeMs: 150,
+			SuccessRate:       98.0,
+			ErrorRate:         2.0,
 		},
 	}
 
@@ -237,12 +237,12 @@ func TestMergeWithDefaults_FullConfig(t *testing.T) {
 		OutputFile:  "custom-output.json",
 		Verbose:     true,
 		PerformanceTargets: domain.PerformanceTargets{
-			RequestsPerSecond:   300,
-			AvgResponseTimeMs:   20,
-			P95ResponseTimeMs:   40,
-			P99ResponseTimeMs:   80,
-			SuccessRate:         99.9,
-			ErrorRate:           0.1,
+			RequestsPerSecond: 300,
+			AvgResponseTimeMs: 20,
+			P95ResponseTimeMs: 40,
+			P99ResponseTimeMs: 80,
+			SuccessRate:       99.9,
+			ErrorRate:         0.1,
 		},
 	}
 

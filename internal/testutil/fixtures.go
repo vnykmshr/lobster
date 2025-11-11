@@ -76,17 +76,17 @@ func SampleResults() *domain.TestResults {
 // MinimalResults returns a minimal test results fixture with only required fields.
 func MinimalResults() *domain.TestResults {
 	return &domain.TestResults{
-		Duration:            "1m0s",
-		URLsDiscovered:      1,
-		TotalRequests:       10,
-		SuccessfulRequests:  10,
-		FailedRequests:      0,
-		RequestsPerSecond:   1.0,
-		SuccessRate:         100.0,
-		URLValidations:      []domain.URLValidation{},
-		Errors:              []domain.ErrorInfo{},
-		SlowRequests:        []domain.SlowRequest{},
-		ResponseTimes:       []domain.ResponseTimeEntry{},
+		Duration:           "1m0s",
+		URLsDiscovered:     1,
+		TotalRequests:      10,
+		SuccessfulRequests: 10,
+		FailedRequests:     0,
+		RequestsPerSecond:  1.0,
+		SuccessRate:        100.0,
+		URLValidations:     []domain.URLValidation{},
+		Errors:             []domain.ErrorInfo{},
+		SlowRequests:       []domain.SlowRequest{},
+		ResponseTimes:      []domain.ResponseTimeEntry{},
 	}
 }
 

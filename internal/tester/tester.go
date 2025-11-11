@@ -24,14 +24,14 @@ import (
 
 // Tester orchestrates the stress testing process
 type Tester struct {
-	config        domain.TesterConfig
-	client        *http.Client
-	urlQueue      chan domain.URLTask
-	results       *domain.TestResults
-	rateLimiter   bucket.Limiter
-	crawler       *crawler.Crawler
-	robotsParser  *robots.Parser
-	logger        *slog.Logger
+	config       domain.TesterConfig
+	client       *http.Client
+	urlQueue     chan domain.URLTask
+	results      *domain.TestResults
+	rateLimiter  bucket.Limiter
+	crawler      *crawler.Crawler
+	robotsParser *robots.Parser
+	logger       *slog.Logger
 
 	// Result channels for lock-free aggregation
 	validationsCh   chan domain.URLValidation
@@ -366,9 +366,9 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 // makeHTTPRequestWithRetry wraps makeHTTPRequest with exponential backoff retry for 429 responses
 func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*http.Response, time.Duration, error) {
 	const (
-		maxRetries    = 4              // Max retry attempts for 429
+		maxRetries     = 4 // Max retry attempts for 429
 		initialBackoff = 1 * time.Second
-		maxBackoff    = 30 * time.Second
+		maxBackoff     = 30 * time.Second
 	)
 
 	var totalDuration time.Duration

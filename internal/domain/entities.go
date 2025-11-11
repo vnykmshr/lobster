@@ -73,22 +73,22 @@ type PerformanceTarget struct {
 
 // PerformanceTargets defines configurable performance criteria
 type PerformanceTargets struct {
-	RequestsPerSecond   float64 `json:"requests_per_second"`
-	AvgResponseTimeMs   float64 `json:"avg_response_time_ms"`
-	P95ResponseTimeMs   float64 `json:"p95_response_time_ms"`
-	P99ResponseTimeMs   float64 `json:"p99_response_time_ms"`
-	SuccessRate         float64 `json:"success_rate"`
-	ErrorRate           float64 `json:"error_rate"`
+	RequestsPerSecond float64 `json:"requests_per_second"`
+	AvgResponseTimeMs float64 `json:"avg_response_time_ms"`
+	P95ResponseTimeMs float64 `json:"p95_response_time_ms"`
+	P99ResponseTimeMs float64 `json:"p99_response_time_ms"`
+	SuccessRate       float64 `json:"success_rate"`
+	ErrorRate         float64 `json:"error_rate"`
 }
 
 // DefaultPerformanceTargets returns sensible default performance targets
 func DefaultPerformanceTargets() PerformanceTargets {
 	return PerformanceTargets{
-		RequestsPerSecond:   100,
-		AvgResponseTimeMs:   50,
-		P95ResponseTimeMs:   100,
-		P99ResponseTimeMs:   200,
-		SuccessRate:         99.0,
-		ErrorRate:           1.0,
+		RequestsPerSecond: 100,
+		AvgResponseTimeMs: 50,
+		P95ResponseTimeMs: 100,
+		P99ResponseTimeMs: 200,
+		SuccessRate:       99.0,
+		ErrorRate:         1.0,
 	}
 }

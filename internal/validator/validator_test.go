@@ -11,12 +11,12 @@ import (
 
 func TestNew(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   100,
-		AvgResponseTimeMs:   50,
-		P95ResponseTimeMs:   100,
-		P99ResponseTimeMs:   200,
-		SuccessRate:         99.0,
-		ErrorRate:           1.0,
+		RequestsPerSecond: 100,
+		AvgResponseTimeMs: 50,
+		P95ResponseTimeMs: 100,
+		P99ResponseTimeMs: 200,
+		SuccessRate:       99.0,
+		ErrorRate:         1.0,
 	}
 
 	v := New(targets)
@@ -33,12 +33,12 @@ func TestNew(t *testing.T) {
 
 func TestNewWithComparison(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   100,
-		AvgResponseTimeMs:   50,
-		P95ResponseTimeMs:   100,
-		P99ResponseTimeMs:   200,
-		SuccessRate:         99.0,
-		ErrorRate:           1.0,
+		RequestsPerSecond: 100,
+		AvgResponseTimeMs: 50,
+		P95ResponseTimeMs: 100,
+		P99ResponseTimeMs: 200,
+		SuccessRate:       99.0,
+		ErrorRate:         1.0,
 	}
 
 	v := NewWithComparison(targets, "Ghost")
@@ -55,12 +55,12 @@ func TestNewWithComparison(t *testing.T) {
 
 func TestValidateResults_AllPassing(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   10,  // Low threshold
-		AvgResponseTimeMs:   100, // High threshold (easier to pass)
-		P95ResponseTimeMs:   200,
-		P99ResponseTimeMs:   300,
-		SuccessRate:         90.0,
-		ErrorRate:           10.0,
+		RequestsPerSecond: 10,  // Low threshold
+		AvgResponseTimeMs: 100, // High threshold (easier to pass)
+		P95ResponseTimeMs: 200,
+		P99ResponseTimeMs: 300,
+		SuccessRate:       90.0,
+		ErrorRate:         10.0,
 	}
 
 	v := New(targets)
@@ -98,12 +98,12 @@ func TestValidateResults_AllPassing(t *testing.T) {
 
 func TestValidateResults_AllFailing(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   1000, // Very high threshold
-		AvgResponseTimeMs:   1,    // Very low threshold (hard to pass)
-		P95ResponseTimeMs:   2,
-		P99ResponseTimeMs:   3,
-		SuccessRate:         99.9,
-		ErrorRate:           0.1,
+		RequestsPerSecond: 1000, // Very high threshold
+		AvgResponseTimeMs: 1,    // Very low threshold (hard to pass)
+		P95ResponseTimeMs: 2,
+		P99ResponseTimeMs: 3,
+		SuccessRate:       99.9,
+		ErrorRate:         0.1,
 	}
 
 	v := New(targets)
@@ -156,12 +156,12 @@ func TestValidateResults_EmptyResponseTimes(t *testing.T) {
 
 func TestValidateResults_PercentilesCalculation(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   1,
-		AvgResponseTimeMs:   1000,
-		P95ResponseTimeMs:   1000,
-		P99ResponseTimeMs:   1000,
-		SuccessRate:         50.0,
-		ErrorRate:           50.0,
+		RequestsPerSecond: 1,
+		AvgResponseTimeMs: 1000,
+		P95ResponseTimeMs: 1000,
+		P99ResponseTimeMs: 1000,
+		SuccessRate:       50.0,
+		ErrorRate:         50.0,
 	}
 
 	v := New(targets)
@@ -215,12 +215,12 @@ func TestValidateResults_PercentilesCalculation(t *testing.T) {
 
 func TestValidateResults_SuccessRate(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   1,
-		AvgResponseTimeMs:   1000,
-		P95ResponseTimeMs:   1000,
-		P99ResponseTimeMs:   1000,
-		SuccessRate:         95.0,
-		ErrorRate:           5.0,
+		RequestsPerSecond: 1,
+		AvgResponseTimeMs: 1000,
+		P95ResponseTimeMs: 1000,
+		P99ResponseTimeMs: 1000,
+		SuccessRate:       95.0,
+		ErrorRate:         5.0,
 	}
 
 	v := New(targets)
@@ -361,12 +361,12 @@ func TestValidateResults_TargetCount(t *testing.T) {
 
 func TestPrintValidationReport(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   100,
-		AvgResponseTimeMs:   50,
-		P95ResponseTimeMs:   100,
-		P99ResponseTimeMs:   200,
-		SuccessRate:         95.0,
-		ErrorRate:           5.0,
+		RequestsPerSecond: 100,
+		AvgResponseTimeMs: 50,
+		P95ResponseTimeMs: 100,
+		P99ResponseTimeMs: 200,
+		SuccessRate:       95.0,
+		ErrorRate:         5.0,
 	}
 	v := New(targets)
 
@@ -380,12 +380,12 @@ func TestPrintValidationReport(t *testing.T) {
 
 func TestPrintValidationReport_AllPassing(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   10,  // Low target
-		AvgResponseTimeMs:   500, // High target
-		P95ResponseTimeMs:   1000,
-		P99ResponseTimeMs:   2000,
-		SuccessRate:         90.0,
-		ErrorRate:           20.0,
+		RequestsPerSecond: 10,  // Low target
+		AvgResponseTimeMs: 500, // High target
+		P95ResponseTimeMs: 1000,
+		P99ResponseTimeMs: 2000,
+		SuccessRate:       90.0,
+		ErrorRate:         20.0,
 	}
 	v := New(targets)
 
@@ -398,12 +398,12 @@ func TestPrintValidationReport_AllPassing(t *testing.T) {
 
 func TestPrintValidationReport_MostPassing(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   50,   // Some pass
-		AvgResponseTimeMs:   100,  // Some fail
-		P95ResponseTimeMs:   200,
-		P99ResponseTimeMs:   400,
-		SuccessRate:         95.0,
-		ErrorRate:           5.0,
+		RequestsPerSecond: 50,  // Some pass
+		AvgResponseTimeMs: 100, // Some fail
+		P95ResponseTimeMs: 200,
+		P99ResponseTimeMs: 400,
+		SuccessRate:       95.0,
+		ErrorRate:         5.0,
 	}
 	v := New(targets)
 
@@ -416,12 +416,12 @@ func TestPrintValidationReport_MostPassing(t *testing.T) {
 
 func TestPrintValidationReport_WithComparison(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   100,
-		AvgResponseTimeMs:   50,
-		P95ResponseTimeMs:   100,
-		P99ResponseTimeMs:   200,
-		SuccessRate:         95.0,
-		ErrorRate:           5.0,
+		RequestsPerSecond: 100,
+		AvgResponseTimeMs: 50,
+		P95ResponseTimeMs: 100,
+		P99ResponseTimeMs: 200,
+		SuccessRate:       95.0,
+		ErrorRate:         5.0,
 	}
 	v := NewWithComparison(targets, "WordPress")
 
@@ -434,12 +434,12 @@ func TestPrintValidationReport_WithComparison(t *testing.T) {
 
 func TestPrintCompetitiveAnalysis_BothPassing(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   10,  // Easy targets
-		AvgResponseTimeMs:   500,
-		P95ResponseTimeMs:   1000,
-		P99ResponseTimeMs:   2000,
-		SuccessRate:         90.0,
-		ErrorRate:           20.0,
+		RequestsPerSecond: 10, // Easy targets
+		AvgResponseTimeMs: 500,
+		P95ResponseTimeMs: 1000,
+		P99ResponseTimeMs: 2000,
+		SuccessRate:       90.0,
+		ErrorRate:         20.0,
 	}
 	v := NewWithComparison(targets, "Ghost")
 
@@ -452,12 +452,12 @@ func TestPrintCompetitiveAnalysis_BothPassing(t *testing.T) {
 
 func TestPrintCompetitiveAnalysis_BothFailing(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   1000, // Very high targets
-		AvgResponseTimeMs:   1,
-		P95ResponseTimeMs:   2,
-		P99ResponseTimeMs:   5,
-		SuccessRate:         99.9,
-		ErrorRate:           0.1,
+		RequestsPerSecond: 1000, // Very high targets
+		AvgResponseTimeMs: 1,
+		P95ResponseTimeMs: 2,
+		P99ResponseTimeMs: 5,
+		SuccessRate:       99.9,
+		ErrorRate:         0.1,
 	}
 	v := NewWithComparison(targets, "Custom CMS")
 
@@ -471,12 +471,12 @@ func TestPrintCompetitiveAnalysis_BothFailing(t *testing.T) {
 func TestGetOverallStatus_ProductionReady(t *testing.T) {
 	// Set very easy targets so all pass (sample has 0.67 req/s)
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   0.5,   // Sample has 0.67
-		AvgResponseTimeMs:   500,   // Sample has ~150ms
-		P95ResponseTimeMs:   1000,  // Sample has ~100ms
-		P99ResponseTimeMs:   2000,  // Sample has ~100ms
-		SuccessRate:         90.0,  // Sample has 95.0%
-		ErrorRate:           20.0,  // Sample has 5.0%
+		RequestsPerSecond: 0.5,  // Sample has 0.67
+		AvgResponseTimeMs: 500,  // Sample has ~150ms
+		P95ResponseTimeMs: 1000, // Sample has ~100ms
+		P99ResponseTimeMs: 2000, // Sample has ~100ms
+		SuccessRate:       90.0, // Sample has 95.0%
+		ErrorRate:         20.0, // Sample has 5.0%
 	}
 	v := New(targets)
 
@@ -496,12 +496,12 @@ func TestGetOverallStatus_ProductionReady(t *testing.T) {
 
 func TestGetOverallStatus_MostlyReady(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   50,
-		AvgResponseTimeMs:   100,
-		P95ResponseTimeMs:   200,
-		P99ResponseTimeMs:   400,
-		SuccessRate:         95.0,
-		ErrorRate:           5.0,
+		RequestsPerSecond: 50,
+		AvgResponseTimeMs: 100,
+		P95ResponseTimeMs: 200,
+		P99ResponseTimeMs: 400,
+		SuccessRate:       95.0,
+		ErrorRate:         5.0,
 	}
 	v := New(targets)
 
@@ -523,7 +523,7 @@ func TestGetOverallStatus_MostlyReady(t *testing.T) {
 	if !ok {
 		t.Fatal("Expected total_targets to be int")
 	}
-	
+
 	if passed < total*3/4 {
 		t.Skip("Test setup doesn't result in mostly ready status")
 	}
@@ -535,12 +535,12 @@ func TestGetOverallStatus_MostlyReady(t *testing.T) {
 
 func TestGetOverallStatus_NeedsImprovement(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   500,  // Very high
-		AvgResponseTimeMs:   10,   // Very low
-		P95ResponseTimeMs:   20,
-		P99ResponseTimeMs:   50,
-		SuccessRate:         99.5,
-		ErrorRate:           0.5,
+		RequestsPerSecond: 500, // Very high
+		AvgResponseTimeMs: 10,  // Very low
+		P95ResponseTimeMs: 20,
+		P99ResponseTimeMs: 50,
+		SuccessRate:       99.5,
+		ErrorRate:         0.5,
 	}
 	v := New(targets)
 
@@ -560,12 +560,12 @@ func TestGetOverallStatus_NeedsImprovement(t *testing.T) {
 
 func TestGetValidationSummary_Structure(t *testing.T) {
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond:   100,
-		AvgResponseTimeMs:   50,
-		P95ResponseTimeMs:   100,
-		P99ResponseTimeMs:   200,
-		SuccessRate:         95.0,
-		ErrorRate:           5.0,
+		RequestsPerSecond: 100,
+		AvgResponseTimeMs: 50,
+		P95ResponseTimeMs: 100,
+		P99ResponseTimeMs: 200,
+		SuccessRate:       95.0,
+		ErrorRate:         5.0,
 	}
 	v := New(targets)
 

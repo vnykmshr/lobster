@@ -26,34 +26,34 @@ var version = "dev"
 
 func main() {
 	var (
-		configPath        = flag.String("config", "", "Path to configuration file (JSON)")
-		baseURL           = flag.String("url", "", "Base URL to test")
-		concurrency       = flag.Int("concurrency", 0, "Number of concurrent workers")
-		duration          = flag.String("duration", "", "Test duration (e.g., 30s, 5m, 1h)")
-		timeout           = flag.String("timeout", "", "Request timeout")
-		rate              = flag.Float64("rate", 0, "Requests per second limit")
-		userAgent         = flag.String("user-agent", "", "User agent string")
-		followLinks       = flag.Bool("follow-links", true, "Follow links found in pages")
-		maxDepth          = flag.Int("max-depth", 0, "Maximum crawl depth")
-		queueSize         = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
-		respect429        = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
-		dryRun            = flag.Bool("dry-run", false, "Discover URLs without making test requests")
+		configPath         = flag.String("config", "", "Path to configuration file (JSON)")
+		baseURL            = flag.String("url", "", "Base URL to test")
+		concurrency        = flag.Int("concurrency", 0, "Number of concurrent workers")
+		duration           = flag.String("duration", "", "Test duration (e.g., 30s, 5m, 1h)")
+		timeout            = flag.String("timeout", "", "Request timeout")
+		rate               = flag.Float64("rate", 0, "Requests per second limit")
+		userAgent          = flag.String("user-agent", "", "User agent string")
+		followLinks        = flag.Bool("follow-links", true, "Follow links found in pages")
+		maxDepth           = flag.Int("max-depth", 0, "Maximum crawl depth")
+		queueSize          = flag.Int("queue-size", 0, "URL queue buffer size (default: 10000)")
+		respect429         = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
+		dryRun             = flag.Bool("dry-run", false, "Discover URLs without making test requests")
 		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "INSECURE: Skip TLS certificate verification")
-		ignoreRobots      = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
-		outputFile        = flag.String("output", "", "Output file for results (JSON)")
-		verbose           = flag.Bool("verbose", false, "Verbose logging")
-		noProgress        = flag.Bool("no-progress", false, "Disable progress updates")
-		showVersion       = flag.Bool("version", false, "Show version information")
-		showHelp          = flag.Bool("help", false, "Show help message")
-		compareAgainst    = flag.String("compare", "", "Compare against target (e.g., 'Ghost', 'WordPress')")
+		ignoreRobots       = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
+		outputFile         = flag.String("output", "", "Output file for results (JSON)")
+		verbose            = flag.Bool("verbose", false, "Verbose logging")
+		noProgress         = flag.Bool("no-progress", false, "Disable progress updates")
+		showVersion        = flag.Bool("version", false, "Show version information")
+		showHelp           = flag.Bool("help", false, "Show help message")
+		compareAgainst     = flag.String("compare", "", "Compare against target (e.g., 'Ghost', 'WordPress')")
 
 		// Authentication flags
-		authType          = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
-		authUsername      = flag.String("auth-username", "", "Username for basic authentication")
-		authPassword      = flag.String("auth-password", "", "Password for basic authentication")
-		authToken         = flag.String("auth-token", "", "Bearer token for authentication")
-		authCookie        = flag.String("auth-cookie", "", "Cookie string (name=value)")
-		authHeader        = flag.String("auth-header", "", "Custom header (Name:Value)")
+		authType     = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
+		authUsername = flag.String("auth-username", "", "Username for basic authentication")
+		authPassword = flag.String("auth-password", "", "Password for basic authentication")
+		authToken    = flag.String("auth-token", "", "Bearer token for authentication")
+		authCookie   = flag.String("auth-cookie", "", "Cookie string (name=value)")
+		authHeader   = flag.String("auth-header", "", "Custom header (Name:Value)")
 	)
 	flag.Parse()
 
@@ -325,7 +325,7 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 
 	// Build authentication configuration from CLI flags
 	if opts.authType != "" || opts.authUsername != "" || opts.authToken != "" ||
-	   opts.authCookie != "" || opts.authHeader != "" {
+		opts.authCookie != "" || opts.authHeader != "" {
 		authCfg := &domain.AuthConfig{
 			Type:     opts.authType,
 			Username: opts.authUsername,
@@ -502,8 +502,8 @@ VERSION:
 // validateRateLimit enforces safe rate limiting to prevent accidental DoS
 func validateRateLimit(rate *float64) error {
 	const (
-		minRate  = 0.1  // Minimum allowed rate (requests per second)
-		warnRate = 1.0  // Warning threshold for low rates
+		minRate  = 0.1 // Minimum allowed rate (requests per second)
+		warnRate = 1.0 // Warning threshold for low rates
 	)
 
 	// Rate of 0 means no rate limiting (unlimited)

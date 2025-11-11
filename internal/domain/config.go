@@ -5,13 +5,13 @@ import "time"
 
 // AuthConfig represents authentication configuration for HTTP requests
 type AuthConfig struct {
-	Type        string            `json:"type"`         // "basic", "bearer", "cookie", "header"
-	Username    string            `json:"username"`     // For basic auth
-	Password    string            `json:"password"`     // For basic auth
-	Token       string            `json:"token"`        // For bearer token auth
-	Cookies     map[string]string `json:"cookies"`      // For cookie-based auth
-	Headers     map[string]string `json:"headers"`      // For custom header-based auth
-	CookieFile  string            `json:"cookie_file"`  // Path to cookie file (Netscape format)
+	Type       string            `json:"type"`        // "basic", "bearer", "cookie", "header"
+	Username   string            `json:"username"`    // For basic auth
+	Password   string            `json:"password"`    // For basic auth
+	Token      string            `json:"token"`       // For bearer token auth
+	Cookies    map[string]string `json:"cookies"`     // For cookie-based auth
+	Headers    map[string]string `json:"headers"`     // For custom header-based auth
+	CookieFile string            `json:"cookie_file"` // Path to cookie file (Netscape format)
 }
 
 // Config represents the complete test configuration

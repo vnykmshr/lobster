@@ -44,9 +44,9 @@ func TestExtractLinks_BasicHTML(t *testing.T) {
 	}
 
 	expectedLinks := map[string]bool{
-		"/page1":                      true,
-		"/page2":                      true,
-		"http://example.com/page3":    true,
+		"/page1":                   true,
+		"/page2":                   true,
+		"http://example.com/page3": true,
 	}
 
 	for _, link := range links {

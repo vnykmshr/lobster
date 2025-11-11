@@ -31,7 +31,7 @@ func testConfig(baseURL string) domain.TesterConfig {
 		UserAgent:      "TestAgent/1.0",
 		FollowLinks:    false,
 		MaxDepth:       1,
-		Rate:           0, // No rate limiting for faster tests
+		Rate:           0,    // No rate limiting for faster tests
 		IgnoreRobots:   true, // Skip robots.txt in tests
 	}
 }
@@ -98,10 +98,10 @@ func TestNew_WithRateLimiter(t *testing.T) {
 
 func TestNew_ConfigurableQueueSize(t *testing.T) {
 	tests := []struct {
-		name              string
-		queueSize         int
-		expectedCapacity  int
-		description       string
+		name             string
+		queueSize        int
+		expectedCapacity int
+		description      string
 	}{
 		{
 			name:             "Custom queue size",
@@ -473,7 +473,7 @@ func TestRun_SlowRequests(t *testing.T) {
 	defer slowServer.Close()
 
 	config := testConfig(slowServer.URL)
-	config.MaxDepth = 0 // Don't crawl, just test the seed URL
+	config.MaxDepth = 0      // Don't crawl, just test the seed URL
 	config.NoProgress = true // Disable progress output in tests
 	logger := testLogger()
 
@@ -738,11 +738,11 @@ func TestRun_WithRateLimiting(t *testing.T) {
 	defer server.Close()
 
 	config := testConfig(server.URL)
-	config.MaxDepth = 1 // Allow crawling to discover links
+	config.MaxDepth = 1       // Allow crawling to discover links
 	config.FollowLinks = true // Must follow links to make multiple requests
-	config.Concurrency = 1 // Single worker to test rate limiting properly
-	config.Rate = 1.0 // 1 request per second = 1000ms between requests
-	config.NoProgress = true // Disable progress output in tests
+	config.Concurrency = 1    // Single worker to test rate limiting properly
+	config.Rate = 1.0         // 1 request per second = 1000ms between requests
+	config.NoProgress = true  // Disable progress output in tests
 	logger := testLogger()
 
 	tester, err := New(config, logger)
@@ -786,11 +786,11 @@ func TestRun_WithRateLimiting(t *testing.T) {
 
 func TestApplyAuthentication(t *testing.T) {
 	tests := []struct {
-		name           string
-		authConfig     *domain.AuthConfig
-		wantErr        bool
-		errContains    string
-		checkAuth      func(t *testing.T, req *http.Request)
+		name        string
+		authConfig  *domain.AuthConfig
+		wantErr     bool
+		errContains string
+		checkAuth   func(t *testing.T, req *http.Request)
 	}{
 		{
 			name: "Basic Auth",
