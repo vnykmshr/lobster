@@ -190,6 +190,9 @@ func TestMergeWithDefaults_EmptyConfig(t *testing.T) {
 	if merged.UserAgent != defaults.UserAgent {
 		t.Errorf("Expected merged UserAgent '%s', got '%s'", defaults.UserAgent, merged.UserAgent)
 	}
+	if merged.QueueSize != defaults.QueueSize {
+		t.Errorf("Expected merged QueueSize %d, got %d", defaults.QueueSize, merged.QueueSize)
+	}
 }
 
 func TestMergeWithDefaults_PartialConfig(t *testing.T) {

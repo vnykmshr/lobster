@@ -127,6 +127,9 @@ func (l *Loader) MergeWithDefaults(config *domain.Config) *domain.Config {
 	if config.MaxDepth == 0 {
 		config.MaxDepth = defaults.MaxDepth
 	}
+	if config.QueueSize == 0 {
+		config.QueueSize = defaults.QueueSize
+	}
 
 	// Merge performance targets
 	if config.PerformanceTargets.RequestsPerSecond == 0 {
