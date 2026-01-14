@@ -45,6 +45,7 @@ type TesterConfig struct {
 	Concurrency        int
 	MaxDepth           int
 	QueueSize          int
+	MaxResponseSize    int64 // Maximum response body size to read (default 10MB)
 	FollowLinks        bool
 	Respect429         bool // Respect HTTP 429 (Too Many Requests) with exponential backoff
 	DryRun             bool // Discover URLs without making actual test requests

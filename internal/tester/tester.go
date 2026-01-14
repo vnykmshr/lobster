@@ -529,8 +529,23 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 		return 0
 	}
 
-	// Limit body reading to 64KB for link extraction
-	limitedReader := io.LimitReader(resp.Body, 64*1024)
+	// Check Content-Length before reading body
+	maxSize := t.config.MaxResponseSize
+	if maxSize == 0 {
+		maxSize = 10 * 1024 * 1024 // Default 10MB
+	}
+	if resp.ContentLength > maxSize {
+		t.logger.Debug("Skipping link extraction: response too large",
+			"url", util.SanitizeURLDefault(task.URL),
+			"content_length", resp.ContentLength,
+			"max_size", maxSize)
+		return 0
+	}
+
+	// Limit body reading to 64KB for link extraction (sufficient for most pages)
+	// This is smaller than MaxResponseSize as we only need links from head/body
+	const linkExtractionLimit = 64 * 1024
+	limitedReader := io.LimitReader(resp.Body, linkExtractionLimit)
 	body, readErr := io.ReadAll(limitedReader)
 	if readErr != nil && readErr != io.EOF {
 		t.logger.Debug("Error reading response body for link extraction",
