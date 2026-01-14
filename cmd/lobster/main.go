@@ -436,13 +436,18 @@ func buildAuthConfig(opts *configOptions) (*domain.AuthConfig, error) {
 }
 
 // readSecretFromStdin reads a single line from stdin for secure credential input.
+// Returns an error if stdin is empty or closed without data.
 func readSecretFromStdin(name string) (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return "", fmt.Errorf("reading %s from stdin: %w", name, err)
 	}
-	return strings.TrimSpace(line), nil
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return "", fmt.Errorf("%s from stdin is empty", name)
+	}
+	return trimmed, nil
 }
 
 // printWarningBox prints a formatted warning box to stderr.
