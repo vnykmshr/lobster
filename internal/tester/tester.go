@@ -22,6 +22,18 @@ import (
 	"github.com/vnykmshr/lobster/internal/util"
 )
 
+const (
+	// defaultSlowRequestThreshold is the response time above which requests are flagged as slow.
+	defaultSlowRequestThreshold = 2 * time.Second
+
+	// linkExtractionLimit is the maximum bytes to read for link discovery.
+	// 64KB is sufficient for most pages as links are typically in the head/upper body.
+	linkExtractionLimit = 64 * 1024
+
+	// defaultQueueSize is the default URL queue capacity when not configured.
+	defaultQueueSize = 10000
+)
+
 // Tester orchestrates the stress testing process
 type Tester struct {
 	config       domain.TesterConfig
@@ -64,10 +76,10 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		}
 	}
 
-	// Use configured queue size, default to 10000 if not set
+	// Use configured queue size, default to defaultQueueSize if not set
 	queueSize := config.QueueSize
 	if queueSize <= 0 {
-		queueSize = 10000
+		queueSize = defaultQueueSize
 	}
 
 	// Create HTTP Transport with connection pooling for high concurrency
@@ -369,8 +381,8 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 	// Discover links if configured
 	validation.LinksFound = t.discoverLinksFromResponse(resp, task)
 
-	// Record slow requests (>2 seconds)
-	if responseTime > 2*time.Second {
+	// Record slow requests exceeding threshold
+	if responseTime > defaultSlowRequestThreshold {
 		t.recordSlowRequest(task.URL, responseTime, resp.StatusCode)
 	}
 
@@ -567,9 +579,7 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 		return 0
 	}
 
-	// Limit body reading to 64KB for link extraction (sufficient for most pages)
-	// This is smaller than MaxResponseSize as we only need links from head/body
-	const linkExtractionLimit = 64 * 1024
+	// Limit body reading for link extraction (smaller than MaxResponseSize)
 	limitedReader := io.LimitReader(resp.Body, linkExtractionLimit)
 	body, readErr := io.ReadAll(limitedReader)
 	if readErr != nil && readErr != io.EOF {
