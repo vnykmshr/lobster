@@ -15,7 +15,7 @@ Major security hardening release with significant performance improvements.
 
 - **Environment variable substitution in config files**: Use `${VAR_NAME}` or `${VAR_NAME:-default}` syntax to reference environment variables in JSON config files
 - **Secure credential input**: `--auth-password-stdin` and `--auth-token-stdin` flags for piping secrets safely
-- **Environment variable auth support**: `LOBSTER_AUTH_PASSWORD`, `LOBSTER_AUTH_TOKEN`, `LOBSTER_AUTH_COOKIE`, `LOBSTER_AUTH_HEADER` environment variables
+- **Environment variable auth support**: `LOBSTER_AUTH_PASSWORD`, `LOBSTER_AUTH_TOKEN`, `LOBSTER_AUTH_COOKIE` environment variables
 - **URL validation with SSRF protection**: Blocks `file://`, `ftp://`, and private IP ranges by default
 - **`--allow-private-ips` flag**: Explicitly enable testing against internal/localhost URLs when needed
 - **Response size validation**: `--max-response-size` flag (default 10MB) prevents memory exhaustion from large responses
@@ -37,7 +37,8 @@ Major security hardening release with significant performance improvements.
 - **`--auth-password` CLI flag**: Use `LOBSTER_AUTH_PASSWORD` env var or `--auth-password-stdin` instead
 - **`--auth-token` CLI flag**: Use `LOBSTER_AUTH_TOKEN` env var or `--auth-token-stdin` instead
 - **`--auth-cookie` CLI flag**: Use `LOBSTER_AUTH_COOKIE` env var instead
-- **`--auth-header` CLI flag**: Use `LOBSTER_AUTH_HEADER` env var instead
+
+**Note:** `--auth-header` flag remains available as header names are not secrets.
 
 ### Fixed
 
