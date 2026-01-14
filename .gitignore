@@ -51,3 +51,6 @@ config.yaml
 
 # Development todos and planning
 todos/
+
+# Local development context
+.claude/
