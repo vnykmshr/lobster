@@ -109,19 +109,15 @@ func main() {
 
 	// Warn about allowing private IPs
 	if *allowPrivateIPs {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                        SECURITY WARNING                            ║\n")
-		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
-		fmt.Fprintf(os.Stderr, "║  Private/localhost IPs are ALLOWED (-allow-private-ips)            ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  This bypasses SSRF protection. Only use for:                      ║\n")
-		fmt.Fprintf(os.Stderr, "║    • Testing internal/local services you own                       ║\n")
-		fmt.Fprintf(os.Stderr, "║    • Development environments                                      ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  NEVER use this with untrusted URL inputs!                        ║\n")
-		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
-		fmt.Fprintf(os.Stderr, "\n")
+		printWarningBox("SECURITY WARNING", []string{
+			"Private/localhost IPs are ALLOWED (-allow-private-ips)",
+			"",
+			"This bypasses SSRF protection. Only use for:",
+			"  • Testing internal/local services you own",
+			"  • Development environments",
+			"",
+			"NEVER use this with untrusted URL inputs!",
+		})
 	}
 
 	// Require explicit env var confirmation for insecure TLS
@@ -141,40 +137,32 @@ Only do this if you understand the security implications:
 		}
 
 		// Show warning after env var check passes
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                        SECURITY WARNING                            ║\n")
-		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
-		fmt.Fprintf(os.Stderr, "║  TLS certificate verification is DISABLED (-insecure-skip-verify)  ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  This makes you vulnerable to man-in-the-middle attacks!          ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  Only use this for:                                                ║\n")
-		fmt.Fprintf(os.Stderr, "║    • Testing with self-signed certificates                         ║\n")
-		fmt.Fprintf(os.Stderr, "║    • Internal development environments                             ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  NEVER use this in production or with untrusted networks!         ║\n")
-		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
-		fmt.Fprintf(os.Stderr, "\n")
+		printWarningBox("SECURITY WARNING", []string{
+			"TLS certificate verification is DISABLED (-insecure-skip-verify)",
+			"",
+			"This makes you vulnerable to man-in-the-middle attacks!",
+			"",
+			"Only use this for:",
+			"  • Testing with self-signed certificates",
+			"  • Internal development environments",
+			"",
+			"NEVER use this in production or with untrusted networks!",
+		})
 	}
 
 	// Warn about ignoring robots.txt
 	if cfg.IgnoreRobots {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                        ETHICAL WARNING                             ║\n")
-		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
-		fmt.Fprintf(os.Stderr, "║  Ignoring robots.txt directives (-ignore-robots)                   ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  You are bypassing the website owner's crawling preferences!      ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  Only use this when:                                               ║\n")
-		fmt.Fprintf(os.Stderr, "║    • You OWN the website being tested                              ║\n")
-		fmt.Fprintf(os.Stderr, "║    • You have explicit written permission                          ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  Unauthorized testing may violate terms of service or laws!       ║\n")
-		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
-		fmt.Fprintf(os.Stderr, "\n")
+		printWarningBox("ETHICAL WARNING", []string{
+			"Ignoring robots.txt directives (-ignore-robots)",
+			"",
+			"You are bypassing the website owner's crawling preferences!",
+			"",
+			"Only use this when:",
+			"  • You OWN the website being tested",
+			"  • You have explicit written permission",
+			"",
+			"Unauthorized testing may violate terms of service or laws!",
+		})
 	}
 
 	// Setup logger
@@ -455,6 +443,37 @@ func readSecretFromStdin(name string) (string, error) {
 		return "", fmt.Errorf("reading %s from stdin: %w", name, err)
 	}
 	return strings.TrimSpace(line), nil
+}
+
+// printWarningBox prints a formatted warning box to stderr.
+// The box has a consistent width and styling for security/ethical warnings.
+func printWarningBox(title string, lines []string) {
+	const boxWidth = 68 // Inner content width
+
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "╔%s╗\n", strings.Repeat("═", boxWidth+2))
+	fmt.Fprintf(os.Stderr, "║ %-*s ║\n", boxWidth, centerText(title, boxWidth))
+	fmt.Fprintf(os.Stderr, "╠%s╣\n", strings.Repeat("═", boxWidth+2))
+
+	for _, line := range lines {
+		if line == "" {
+			fmt.Fprintf(os.Stderr, "║ %-*s ║\n", boxWidth, "")
+		} else {
+			fmt.Fprintf(os.Stderr, "║  %-*s║\n", boxWidth-1, line)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "╚%s╝\n", strings.Repeat("═", boxWidth+2))
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
+// centerText centers text within a given width
+func centerText(text string, width int) string {
+	if len(text) >= width {
+		return text
+	}
+	padding := (width - len(text)) / 2
+	return strings.Repeat(" ", padding) + text + strings.Repeat(" ", width-len(text)-padding)
 }
 
 func showHelpMessage() {
