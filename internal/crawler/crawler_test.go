@@ -275,3 +275,35 @@ func TestGetDiscoveredCount(t *testing.T) {
 		t.Errorf("Expected count 2, got %d", count)
 	}
 }
+
+func TestGetDroppedCount(t *testing.T) {
+	c, _ := New("http://example.com", 3)
+	// Create a queue with capacity of 2
+	urlQueue := make(chan domain.URLTask, 2)
+
+	// Initial dropped count should be 0
+	if dropped := c.GetDroppedCount(); dropped != 0 {
+		t.Errorf("Expected initial dropped count 0, got %d", dropped)
+	}
+
+	// Fill the queue
+	c.AddURL("http://example.com/page1", 1, urlQueue)
+	c.AddURL("http://example.com/page2", 1, urlQueue)
+
+	// Queue is full - this should be dropped
+	c.AddURL("http://example.com/page3", 1, urlQueue)
+	c.AddURL("http://example.com/page4", 1, urlQueue)
+
+	// Should have 2 dropped URLs
+	droppedCount := c.GetDroppedCount()
+	if droppedCount != 2 {
+		t.Errorf("Expected dropped count 2, got %d", droppedCount)
+	}
+
+	// Discovered count should still include all unique URLs
+	// (they were seen even if not queued)
+	discoveredCount := c.GetDiscoveredCount()
+	if discoveredCount != 4 {
+		t.Errorf("Expected discovered count 4, got %d", discoveredCount)
+	}
+}
