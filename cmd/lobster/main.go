@@ -48,12 +48,11 @@ func main() {
 		compareAgainst     = flag.String("compare", "", "Compare against target (e.g., 'Ghost', 'WordPress')")
 
 		// Authentication flags
-		authType     = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
-		authUsername = flag.String("auth-username", "", "Username for basic authentication")
-		authPassword = flag.String("auth-password", "", "Password for basic authentication")
-		authToken    = flag.String("auth-token", "", "Bearer token for authentication")
-		authCookie   = flag.String("auth-cookie", "", "Cookie string (name=value)")
-		authHeader   = flag.String("auth-header", "", "Custom header (Name:Value)")
+		authType          = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
+		authUsername      = flag.String("auth-username", "", "Username for basic authentication")
+		authPasswordStdin = flag.Bool("auth-password-stdin", false, "Read password from stdin (one line)")
+		authTokenStdin    = flag.Bool("auth-token-stdin", false, "Read bearer token from stdin (one line)")
+		authHeader        = flag.String("auth-header", "", "Custom header (Name:Value)")
 	)
 	flag.Parse()
 
@@ -86,9 +85,8 @@ func main() {
 		verbose:            *verbose,
 		authType:           *authType,
 		authUsername:       *authUsername,
-		authPassword:       *authPassword,
-		authToken:          *authToken,
-		authCookie:         *authCookie,
+		authPasswordStdin:  *authPasswordStdin,
+		authTokenStdin:     *authTokenStdin,
 		authHeader:         *authHeader,
 	})
 	if err != nil {
@@ -264,10 +262,9 @@ type configOptions struct {
 	ignoreRobots       bool
 	authType           string
 	authUsername       string
-	authPassword       string
-	authToken          string
-	authCookie         string
 	authHeader         string
+	authPasswordStdin  bool
+	authTokenStdin     bool
 }
 
 func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, error) {
@@ -323,34 +320,12 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	cfg.InsecureSkipVerify = opts.insecureSkipVerify
 	cfg.IgnoreRobots = opts.ignoreRobots
 
-	// Build authentication configuration from CLI flags
-	if opts.authType != "" || opts.authUsername != "" || opts.authToken != "" ||
-		opts.authCookie != "" || opts.authHeader != "" {
-		authCfg := &domain.AuthConfig{
-			Type:     opts.authType,
-			Username: opts.authUsername,
-			Password: opts.authPassword,
-			Token:    opts.authToken,
-		}
-
-		// Parse cookie string (name=value)
-		if opts.authCookie != "" {
-			authCfg.Cookies = make(map[string]string)
-			parts := strings.SplitN(opts.authCookie, "=", 2)
-			if len(parts) == 2 {
-				authCfg.Cookies[parts[0]] = parts[1]
-			}
-		}
-
-		// Parse header string (Name:Value)
-		if opts.authHeader != "" {
-			authCfg.Headers = make(map[string]string)
-			parts := strings.SplitN(opts.authHeader, ":", 2)
-			if len(parts) == 2 {
-				authCfg.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-			}
-		}
-
+	// Build authentication configuration from CLI flags and environment variables
+	authCfg, err := buildAuthConfig(opts)
+	if err != nil {
+		return nil, fmt.Errorf("authentication configuration: %w", err)
+	}
+	if authCfg != nil {
 		cfg.Auth = authCfg
 	}
 
@@ -358,6 +333,80 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 	cfg = loader.MergeWithDefaults(cfg)
 
 	return cfg, nil
+}
+
+// buildAuthConfig builds authentication configuration from environment variables and stdin.
+// Credentials are read from:
+// 1. Environment variables (LOBSTER_AUTH_PASSWORD, LOBSTER_AUTH_TOKEN, LOBSTER_AUTH_COOKIE)
+// 2. Stdin when --auth-password-stdin or --auth-token-stdin flags are used
+// CLI flags for credentials are intentionally not supported to prevent exposure in process lists.
+func buildAuthConfig(opts *configOptions) (*domain.AuthConfig, error) {
+	// Get credentials from environment variables
+	password := os.Getenv("LOBSTER_AUTH_PASSWORD")
+	token := os.Getenv("LOBSTER_AUTH_TOKEN")
+	cookie := os.Getenv("LOBSTER_AUTH_COOKIE")
+
+	// Read from stdin if requested (overrides env vars)
+	if opts.authPasswordStdin {
+		stdinPassword, err := readSecretFromStdin("password")
+		if err != nil {
+			return nil, err
+		}
+		password = stdinPassword
+	}
+
+	if opts.authTokenStdin {
+		stdinToken, err := readSecretFromStdin("token")
+		if err != nil {
+			return nil, err
+		}
+		token = stdinToken
+	}
+
+	// Check if any auth configuration is provided
+	hasAuth := opts.authType != "" || opts.authUsername != "" || opts.authHeader != "" ||
+		password != "" || token != "" || cookie != ""
+
+	if !hasAuth {
+		return nil, nil
+	}
+
+	authCfg := &domain.AuthConfig{
+		Type:     opts.authType,
+		Username: opts.authUsername,
+		Password: password,
+		Token:    token,
+	}
+
+	// Parse cookie string (name=value) from env var
+	if cookie != "" {
+		authCfg.Cookies = make(map[string]string)
+		parts := strings.SplitN(cookie, "=", 2)
+		if len(parts) == 2 {
+			authCfg.Cookies[parts[0]] = parts[1]
+		}
+	}
+
+	// Parse header string (Name:Value)
+	if opts.authHeader != "" {
+		authCfg.Headers = make(map[string]string)
+		parts := strings.SplitN(opts.authHeader, ":", 2)
+		if len(parts) == 2 {
+			authCfg.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+		}
+	}
+
+	return authCfg, nil
+}
+
+// readSecretFromStdin reads a single line from stdin for secure credential input.
+func readSecretFromStdin(name string) (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil && err.Error() != "EOF" {
+		return "", fmt.Errorf("reading %s from stdin: %w", name, err)
+	}
+	return strings.TrimSpace(line), nil
 }
 
 func showHelpMessage() {
@@ -418,14 +467,17 @@ AUTHENTICATION OPTIONS:
         Authentication type: basic, bearer, cookie, header
     -auth-username string
         Username for basic authentication
-    -auth-password string
-        Password for basic authentication
-    -auth-token string
-        Bearer token for authentication
-    -auth-cookie string
-        Cookie string in name=value format
+    -auth-password-stdin
+        Read password from stdin (more secure than CLI flags)
+    -auth-token-stdin
+        Read bearer token from stdin (more secure than CLI flags)
     -auth-header string
         Custom header in Name:Value format
+
+    Credentials via environment variables (RECOMMENDED):
+        LOBSTER_AUTH_PASSWORD   Password for basic authentication
+        LOBSTER_AUTH_TOKEN      Bearer token for authentication
+        LOBSTER_AUTH_COOKIE     Cookie string in name=value format
 
     -version
         Show version information
@@ -451,17 +503,25 @@ EXAMPLES:
     # Quick validation test
     lobster -url http://localhost:3000 -duration 30s -concurrency 5
 
-    # Test with basic authentication
-    lobster -url http://localhost:3000 -auth-type basic -auth-username admin -auth-password secret
+    # Test with basic authentication (using environment variable)
+    LOBSTER_AUTH_PASSWORD=secret lobster -url http://localhost:3000 \
+        -auth-type basic -auth-username admin
 
-    # Test with bearer token
-    lobster -url http://api.example.com -auth-type bearer -auth-token eyJhbGc...
+    # Test with basic authentication (using stdin)
+    echo "secret" | lobster -url http://localhost:3000 \
+        -auth-type basic -auth-username admin -auth-password-stdin
 
-    # Test with cookie authentication
-    lobster -url http://localhost:3000 -auth-type cookie -auth-cookie "session=abc123"
+    # Test with bearer token (using environment variable)
+    LOBSTER_AUTH_TOKEN=eyJhbGc... lobster -url http://api.example.com \
+        -auth-type bearer
+
+    # Test with cookie authentication (using environment variable)
+    LOBSTER_AUTH_COOKIE="session=abc123" lobster -url http://localhost:3000 \
+        -auth-type cookie
 
     # Test with custom header (e.g., API key)
-    lobster -url http://api.example.com -auth-type header -auth-header "X-API-Key:your-key-here"
+    lobster -url http://api.example.com -auth-type header \
+        -auth-header "X-API-Key:your-key-here"
 
 CONFIGURATION FILE EXAMPLE:
     {
@@ -479,7 +539,7 @@ CONFIGURATION FILE EXAMPLE:
       "auth": {
         "type": "basic",
         "username": "admin",
-        "password": "secret"
+        "password": "${LOBSTER_AUTH_PASSWORD}"
       },
       "performance_targets": {
         "requests_per_second": 100,
@@ -490,6 +550,9 @@ CONFIGURATION FILE EXAMPLE:
         "error_rate": 1.0
       }
     }
+
+    NOTE: Use ${VAR_NAME} syntax for environment variable substitution.
+    Never store plaintext credentials in config files.
 
 DOCUMENTATION:
     Full documentation: https://github.com/vnykmshr/lobster
