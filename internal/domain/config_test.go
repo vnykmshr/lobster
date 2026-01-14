@@ -130,3 +130,147 @@ func TestDefaultPerformanceTargets_Consistency(t *testing.T) {
 		t.Errorf("SuccessRate + ErrorRate should equal 100, got %v", totalRate)
 	}
 }
+
+func TestConfig_Validate_Valid(t *testing.T) {
+	cfg := DefaultConfig()
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("Expected valid default config, got error: %v", err)
+	}
+}
+
+func TestConfig_Validate_Invalid(t *testing.T) {
+	tests := []struct {
+		name    string
+		modify  func(*Config)
+		wantErr string
+	}{
+		{
+			name:    "negative concurrency",
+			modify:  func(c *Config) { c.Concurrency = -1 },
+			wantErr: "concurrency must be > 0",
+		},
+		{
+			name:    "zero concurrency",
+			modify:  func(c *Config) { c.Concurrency = 0 },
+			wantErr: "concurrency must be > 0",
+		},
+		{
+			name:    "negative max depth",
+			modify:  func(c *Config) { c.MaxDepth = -1 },
+			wantErr: "max-depth cannot be negative",
+		},
+		{
+			name:    "zero queue size",
+			modify:  func(c *Config) { c.QueueSize = 0 },
+			wantErr: "queue-size must be > 0",
+		},
+		{
+			name:    "negative rate",
+			modify:  func(c *Config) { c.Rate = -1.0 },
+			wantErr: "rate cannot be negative",
+		},
+		{
+			name:    "invalid duration",
+			modify:  func(c *Config) { c.Duration = "not-a-duration" },
+			wantErr: "invalid duration",
+		},
+		{
+			name:    "invalid timeout",
+			modify:  func(c *Config) { c.Timeout = "bad" },
+			wantErr: "invalid timeout",
+		},
+		{
+			name:    "empty base URL",
+			modify:  func(c *Config) { c.BaseURL = "" },
+			wantErr: "base URL is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := DefaultConfig()
+			tt.modify(&cfg)
+			err := cfg.Validate()
+			if err == nil {
+				t.Errorf("Expected error containing %q, got nil", tt.wantErr)
+				return
+			}
+			if !contains(err.Error(), tt.wantErr) {
+				t.Errorf("Expected error containing %q, got %q", tt.wantErr, err.Error())
+			}
+		})
+	}
+}
+
+func TestAuthConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		auth    AuthConfig
+		wantErr string
+	}{
+		{
+			name:    "valid empty",
+			auth:    AuthConfig{},
+			wantErr: "",
+		},
+		{
+			name:    "valid basic",
+			auth:    AuthConfig{Type: "basic", Username: "user"},
+			wantErr: "",
+		},
+		{
+			name:    "valid bearer",
+			auth:    AuthConfig{Type: "bearer", Token: "token123"},
+			wantErr: "",
+		},
+		{
+			name:    "invalid type",
+			auth:    AuthConfig{Type: "oauth"},
+			wantErr: "invalid auth type",
+		},
+		{
+			name:    "basic without username",
+			auth:    AuthConfig{Type: "basic"},
+			wantErr: "basic auth requires username",
+		},
+		{
+			name:    "bearer without token",
+			auth:    AuthConfig{Type: "bearer"},
+			wantErr: "bearer auth requires token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.auth.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("Expected no error, got: %v", err)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("Expected error containing %q, got nil", tt.wantErr)
+					return
+				}
+				if !contains(err.Error(), tt.wantErr) {
+					t.Errorf("Expected error containing %q, got %q", tt.wantErr, err.Error())
+				}
+			}
+		})
+	}
+}
+
+// Helper function
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

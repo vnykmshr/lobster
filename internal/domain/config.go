@@ -1,7 +1,10 @@
 // Package domain defines core domain types and entities for the load testing tool.
 package domain
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // AuthConfig represents authentication configuration for HTTP requests
 type AuthConfig struct {
@@ -73,4 +76,74 @@ func DefaultConfig() Config {
 		Verbose:            false,
 		PerformanceTargets: DefaultPerformanceTargets(),
 	}
+}
+
+// Validate checks that all configuration values are valid.
+// Returns an error describing the first invalid value found.
+func (c *Config) Validate() error {
+	if c.Concurrency <= 0 {
+		return fmt.Errorf("concurrency must be > 0, got %d", c.Concurrency)
+	}
+
+	if c.MaxDepth < 0 {
+		return fmt.Errorf("max-depth cannot be negative, got %d", c.MaxDepth)
+	}
+
+	if c.QueueSize <= 0 {
+		return fmt.Errorf("queue-size must be > 0, got %d", c.QueueSize)
+	}
+
+	if c.Rate < 0 {
+		return fmt.Errorf("rate cannot be negative, got %.2f", c.Rate)
+	}
+
+	if c.Duration != "" {
+		if _, err := time.ParseDuration(c.Duration); err != nil {
+			return fmt.Errorf("invalid duration %q: %w", c.Duration, err)
+		}
+	}
+
+	if c.Timeout != "" {
+		if _, err := time.ParseDuration(c.Timeout); err != nil {
+			return fmt.Errorf("invalid timeout %q: %w", c.Timeout, err)
+		}
+	}
+
+	if c.BaseURL == "" {
+		return fmt.Errorf("base URL is required")
+	}
+
+	// Validate auth config if present
+	if c.Auth != nil {
+		if err := c.Auth.Validate(); err != nil {
+			return fmt.Errorf("auth config: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Validate checks that auth configuration values are valid.
+func (a *AuthConfig) Validate() error {
+	validTypes := map[string]bool{
+		"":       true, // Empty is allowed (no auth)
+		"basic":  true,
+		"bearer": true,
+		"cookie": true,
+		"header": true,
+	}
+
+	if !validTypes[a.Type] {
+		return fmt.Errorf("invalid auth type %q: must be one of basic, bearer, cookie, header", a.Type)
+	}
+
+	if a.Type == "basic" && a.Username == "" {
+		return fmt.Errorf("basic auth requires username")
+	}
+
+	if a.Type == "bearer" && a.Token == "" {
+		return fmt.Errorf("bearer auth requires token")
+	}
+
+	return nil
 }
