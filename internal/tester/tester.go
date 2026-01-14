@@ -550,11 +550,16 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 	return len(links)
 }
 
-// recordError records an error encountered during testing
+// recordError records an error encountered during testing.
+// Error messages are sanitized to hide internal infrastructure details
+// unless verbose mode is enabled.
 func (t *Tester) recordError(url, errMsg string, depth int) {
+	// Sanitize error message to hide internal details unless verbose
+	sanitizedErr := util.SanitizeErrorForDisplay(errMsg, t.config.Verbose)
+
 	errorInfo := domain.ErrorInfo{
 		URL:       url,
-		Error:     errMsg,
+		Error:     sanitizedErr,
 		Timestamp: time.Now(),
 		Depth:     depth,
 	}
