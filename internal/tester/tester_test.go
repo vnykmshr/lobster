@@ -1189,3 +1189,229 @@ func TestMakeHTTPRequestWithRetry_Respect429Disabled(t *testing.T) {
 		t.Errorf("Expected status 429, got %d", resp.StatusCode)
 	}
 }
+
+// Tests for processDryRun (Task 4.1)
+
+// drainChannels collects results from tester channels into results struct.
+// Must be called after processDryRun to aggregate sent data.
+func drainChannels(tester *Tester) {
+	// Drain all channels in a non-blocking way
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case v, ok := <-tester.validationsCh:
+				if !ok {
+					return
+				}
+				tester.results.URLValidations = append(tester.results.URLValidations, v)
+			case e, ok := <-tester.errorsCh:
+				if !ok {
+					return
+				}
+				tester.results.Errors = append(tester.results.Errors, e)
+			case <-done:
+				return
+			}
+		}
+	}()
+	// Give time for channels to be drained
+	time.Sleep(10 * time.Millisecond)
+	close(done)
+}
+
+func TestProcessDryRun_URLDiscovery(t *testing.T) {
+	// Server that returns HTML with links
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`
+			<html><body>
+				<a href="/page1">Page 1</a>
+				<a href="/page2">Page 2</a>
+			</body></html>
+		`))
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	config.FollowLinks = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	// Call processDryRun directly
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify TotalRequests incremented
+	if tester.results.TotalRequests != 1 {
+		t.Errorf("Expected TotalRequests=1, got %d", tester.results.TotalRequests)
+	}
+
+	// Verify no failed requests
+	if tester.results.FailedRequests != 0 {
+		t.Errorf("Expected FailedRequests=0, got %d", tester.results.FailedRequests)
+	}
+
+	// Verify validation was recorded
+	if len(tester.results.URLValidations) != 1 {
+		t.Fatalf("Expected 1 validation, got %d", len(tester.results.URLValidations))
+	}
+
+	validation := tester.results.URLValidations[0]
+	if validation.StatusCode != 200 {
+		t.Errorf("Expected status 200, got %d", validation.StatusCode)
+	}
+}
+
+func TestProcessDryRun_AuthenticationApplied(t *testing.T) {
+	var receivedAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	config.Auth = &domain.AuthConfig{
+		Type:  "bearer",
+		Token: "test-token",
+	}
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Verify auth header was applied
+	expectedAuth := "Bearer test-token"
+	if receivedAuth != expectedAuth {
+		t.Errorf("Expected auth header %q, got %q", expectedAuth, receivedAuth)
+	}
+}
+
+func TestProcessDryRun_RequestError(t *testing.T) {
+	// Use a non-routable IP to cause connection failure
+	config := testConfig("http://192.0.2.1:12345") // TEST-NET-1, guaranteed non-routable
+	config.DryRun = true
+	config.RequestTimeout = 100 * time.Millisecond // Short timeout
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: config.BaseURL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify TotalRequests incremented
+	if tester.results.TotalRequests != 1 {
+		t.Errorf("Expected TotalRequests=1, got %d", tester.results.TotalRequests)
+	}
+
+	// Verify FailedRequests incremented
+	if tester.results.FailedRequests != 1 {
+		t.Errorf("Expected FailedRequests=1, got %d", tester.results.FailedRequests)
+	}
+
+	// Verify error was recorded
+	if len(tester.results.Errors) != 1 {
+		t.Errorf("Expected 1 error, got %d", len(tester.results.Errors))
+	}
+}
+
+func TestProcessDryRun_ContextCancellation(t *testing.T) {
+	// Server that delays response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(500 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Create context that cancels quickly
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify request failed
+	if tester.results.FailedRequests != 1 {
+		t.Errorf("Expected FailedRequests=1 after context cancellation, got %d", tester.results.FailedRequests)
+	}
+}
+
+func TestProcessDryRun_InvalidStatusCode(t *testing.T) {
+	// Server that returns 500 error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify validation was recorded with correct status
+	if len(tester.results.URLValidations) != 1 {
+		t.Fatalf("Expected 1 validation, got %d", len(tester.results.URLValidations))
+	}
+
+	validation := tester.results.URLValidations[0]
+	if validation.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", validation.StatusCode)
+	}
+
+	// 500 should be marked as invalid
+	if validation.IsValid {
+		t.Error("Expected 500 to be marked as invalid")
+	}
+}
