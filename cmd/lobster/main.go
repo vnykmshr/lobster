@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -60,6 +59,15 @@ func main() {
 	)
 	flag.Parse()
 
+	// Setup logger early so all errors use consistent output format
+	logLevel := slog.LevelInfo
+	if *verbose {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+
 	if *showVersion {
 		fmt.Printf("Lobster v%s\n", version)
 		return
@@ -94,17 +102,24 @@ func main() {
 		authHeader:         *authHeader,
 	})
 	if err != nil {
-		log.Fatalf("Configuration error: %v\nCheck your config file syntax or command-line flags", err)
+		logger.Error("Configuration error",
+			"error", err,
+			"hint", "Check your config file syntax or command-line flags")
+		os.Exit(1)
 	}
 
 	// Validate and enforce rate limit safety
 	if validateErr := validateRateLimit(&cfg.Rate); validateErr != nil {
-		log.Fatalf("Invalid rate limit: %v\nUse -rate flag with a value >= 0.1", validateErr)
+		logger.Error("Invalid rate limit",
+			"error", validateErr,
+			"hint", "Use -rate flag with a value >= 0.1")
+		os.Exit(1)
 	}
 
 	// Validate base URL (SSRF protection)
 	if validateErr := util.ValidateBaseURL(cfg.BaseURL, *allowPrivateIPs); validateErr != nil {
-		log.Fatalf("Invalid base URL: %v", validateErr)
+		logger.Error("Invalid base URL", "error", validateErr)
+		os.Exit(1)
 	}
 
 	// Warn about allowing private IPs
@@ -123,17 +138,15 @@ func main() {
 	// Require explicit env var confirmation for insecure TLS
 	if cfg.InsecureSkipVerify {
 		if os.Getenv("LOBSTER_INSECURE_TLS") != "true" {
-			log.Fatalf(`Insecure TLS verification disabled but LOBSTER_INSECURE_TLS=true not set.
-
-This is a security safeguard to prevent accidental TLS bypass in production.
-
-To proceed, set the environment variable:
-  export LOBSTER_INSECURE_TLS=true
-
-Only do this if you understand the security implications:
-  - Man-in-the-middle attacks become possible
-  - Certificate validation is completely bypassed
-  - Use only for testing with self-signed certificates`)
+			logger.Error("Insecure TLS requires explicit confirmation",
+				"required_env", "LOBSTER_INSECURE_TLS=true",
+				"reason", "security safeguard to prevent accidental TLS bypass",
+				"implications", []string{
+					"man-in-the-middle attacks become possible",
+					"certificate validation is completely bypassed",
+					"use only for testing with self-signed certificates",
+				})
+			os.Exit(1)
 		}
 
 		// Show warning after env var check passes
@@ -165,26 +178,22 @@ Only do this if you understand the security implications:
 		})
 	}
 
-	// Setup logger
-	logLevel := slog.LevelInfo
-	if cfg.Verbose {
-		logLevel = slog.LevelDebug
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
-
 	// Parse duration
 	testDuration, err := time.ParseDuration(cfg.Duration)
 	if err != nil {
-		log.Fatalf("Invalid duration format: %v\nUse format like: 30s, 5m, 1h (e.g., -duration 2m)", err)
+		logger.Error("Invalid duration format",
+			"error", err,
+			"hint", "Use format like: 30s, 5m, 1h (e.g., -duration 2m)")
+		os.Exit(1)
 	}
 
 	// Parse timeout
 	requestTimeout, err := time.ParseDuration(cfg.Timeout)
 	if err != nil {
-		log.Fatalf("Invalid timeout format: %v\nUse format like: 30s, 5m, 1h (e.g., -timeout 30s)", err)
+		logger.Error("Invalid timeout format",
+			"error", err,
+			"hint", "Use format like: 30s, 5m, 1h (e.g., -timeout 30s)")
+		os.Exit(1)
 	}
 
 	// Create context with timeout
@@ -213,7 +222,10 @@ Only do this if you understand the security implications:
 	stressTester, err := tester.New(testerConfig, logger)
 	if err != nil {
 		cancel()
-		log.Fatalf("Tester initialization failed: %v\nCheck your configuration and base URL", err) //nolint:gocritic // cancel() is called explicitly before exit
+		logger.Error("Tester initialization failed",
+			"error", err,
+			"hint", "Check your configuration and base URL")
+		os.Exit(1)
 	}
 
 	// Run stress test
@@ -227,7 +239,7 @@ Only do this if you understand the security implications:
 
 	results, err := stressTester.Run(ctx)
 	if err != nil {
-		log.Printf("Stress test failed: %v", err)
+		logger.Error("Stress test failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -258,7 +270,11 @@ Only do this if you understand the security implications:
 		err = rep.GenerateJSON(cfg.OutputFile)
 		if err != nil {
 			cancel()
-			log.Fatalf("Cannot write results to %s: %v\nCheck file permissions and disk space", cfg.OutputFile, err)
+			logger.Error("Cannot write results",
+				"file", cfg.OutputFile,
+				"error", err,
+				"hint", "Check file permissions and disk space")
+			os.Exit(1)
 		}
 		logger.Info("Results saved", "file", cfg.OutputFile)
 
