@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/vnykmshr/lobster/internal/domain"
 )
@@ -17,6 +18,8 @@ type Crawler struct {
 	baseURL        *url.URL
 	urlPattern     *regexp.Regexp
 	maxDepth       int
+	discoveredCnt  atomic.Int64 // O(1) counter for discovered URLs
+	droppedCnt     atomic.Int64 // Counter for URLs dropped due to queue full
 }
 
 // New creates a new crawler
@@ -95,6 +98,9 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan domain.URLTask)
 		return false
 	}
 
+	// Track discovered URL count (O(1) instead of iterating sync.Map)
+	c.discoveredCnt.Add(1)
+
 	// Check depth limit
 	if depth > c.maxDepth {
 		return false
@@ -105,17 +111,18 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan domain.URLTask)
 	case urlQueue <- domain.URLTask{URL: cleanURL, Depth: depth}:
 		return true
 	default:
-		// Queue full, skip
+		// Queue full - track dropped URLs for visibility
+		c.droppedCnt.Add(1)
 		return false
 	}
 }
 
-// GetDiscoveredCount returns the number of discovered URLs
+// GetDiscoveredCount returns the number of discovered URLs (O(1) operation)
 func (c *Crawler) GetDiscoveredCount() int {
-	count := 0
-	c.discoveredURLs.Range(func(_, _ interface{}) bool {
-		count++
-		return true
-	})
-	return count
+	return int(c.discoveredCnt.Load())
+}
+
+// GetDroppedCount returns the number of URLs dropped due to queue full
+func (c *Crawler) GetDroppedCount() int {
+	return int(c.droppedCnt.Load())
 }
