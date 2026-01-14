@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/vnykmshr/lobster/internal/domain"
 )
@@ -48,6 +49,7 @@ func (l *Loader) LoadFromFile(path string) (*domain.Config, error) {
 // substituteEnvVars replaces ${VAR_NAME} patterns with environment variable values.
 // Supports ${VAR_NAME:-default} syntax for default values when env var is not set.
 // Returns an error if a required env var (no default) is not set.
+// Note: ${VAR:-} with empty default is valid and means "use empty string if VAR is unset".
 func substituteEnvVars(content string) (string, error) {
 	var missingVars []string
 
@@ -58,14 +60,17 @@ func substituteEnvVars(content string) (string, error) {
 		}
 
 		varName := submatches[1]
+		// Check if default syntax was used by looking for :- in the match
+		// This properly handles ${VAR:-} where default is empty string
+		hasDefault := strings.Contains(match, ":-")
 		defaultValue := ""
-		hasDefault := len(submatches) > 2 && submatches[2] != ""
-		if hasDefault {
+		if hasDefault && len(submatches) > 2 {
 			defaultValue = submatches[2]
 		}
 
-		value := os.Getenv(varName)
-		if value == "" {
+		// Use LookupEnv to distinguish between unset and empty env vars
+		value, isSet := os.LookupEnv(varName)
+		if !isSet {
 			if hasDefault {
 				return defaultValue
 			}

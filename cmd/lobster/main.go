@@ -4,8 +4,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -380,6 +382,11 @@ func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, 
 // 2. Stdin when --auth-password-stdin or --auth-token-stdin flags are used
 // CLI flags for credentials are intentionally not supported to prevent exposure in process lists.
 func buildAuthConfig(opts *configOptions) (*domain.AuthConfig, error) {
+	// Validate stdin flags are mutually exclusive (can only read one value from stdin)
+	if opts.authPasswordStdin && opts.authTokenStdin {
+		return nil, fmt.Errorf("--auth-password-stdin and --auth-token-stdin are mutually exclusive")
+	}
+
 	// Get credentials from environment variables
 	password := os.Getenv("LOBSTER_AUTH_PASSWORD")
 	token := os.Getenv("LOBSTER_AUTH_TOKEN")
@@ -419,20 +426,22 @@ func buildAuthConfig(opts *configOptions) (*domain.AuthConfig, error) {
 
 	// Parse cookie string (name=value) from env var
 	if cookie != "" {
-		authCfg.Cookies = make(map[string]string)
 		parts := strings.SplitN(cookie, "=", 2)
-		if len(parts) == 2 {
-			authCfg.Cookies[parts[0]] = parts[1]
+		if len(parts) != 2 || parts[0] == "" {
+			return nil, fmt.Errorf("invalid LOBSTER_AUTH_COOKIE format: expected 'name=value', got %q", cookie)
 		}
+		authCfg.Cookies = make(map[string]string)
+		authCfg.Cookies[parts[0]] = parts[1]
 	}
 
 	// Parse header string (Name:Value)
 	if opts.authHeader != "" {
-		authCfg.Headers = make(map[string]string)
 		parts := strings.SplitN(opts.authHeader, ":", 2)
-		if len(parts) == 2 {
-			authCfg.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+		if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" {
+			return nil, fmt.Errorf("invalid auth header format: expected 'Name:Value', got %q", opts.authHeader)
 		}
+		authCfg.Headers = make(map[string]string)
+		authCfg.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 
 	return authCfg, nil
@@ -442,7 +451,7 @@ func buildAuthConfig(opts *configOptions) (*domain.AuthConfig, error) {
 func readSecretFromStdin(name string) (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	line, err := reader.ReadString('\n')
-	if err != nil && err.Error() != "EOF" {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return "", fmt.Errorf("reading %s from stdin: %w", name, err)
 	}
 	return strings.TrimSpace(line), nil
