@@ -17,6 +17,7 @@ import (
 	"github.com/vnykmshr/lobster/internal/domain"
 	"github.com/vnykmshr/lobster/internal/reporter"
 	"github.com/vnykmshr/lobster/internal/tester"
+	"github.com/vnykmshr/lobster/internal/util"
 	"github.com/vnykmshr/lobster/internal/validator"
 )
 
@@ -39,6 +40,7 @@ func main() {
 		respect429         = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
 		dryRun             = flag.Bool("dry-run", false, "Discover URLs without making test requests")
 		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "INSECURE: Skip TLS certificate verification")
+		allowPrivateIPs    = flag.Bool("allow-private-ips", false, "Allow private/localhost IPs (for internal testing)")
 		ignoreRobots       = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
 		outputFile         = flag.String("output", "", "Output file for results (JSON)")
 		verbose            = flag.Bool("verbose", false, "Verbose logging")
@@ -96,6 +98,28 @@ func main() {
 	// Validate and enforce rate limit safety
 	if validateErr := validateRateLimit(&cfg.Rate); validateErr != nil {
 		log.Fatalf("Invalid rate limit: %v\nUse -rate flag with a value >= 0.1", validateErr)
+	}
+
+	// Validate base URL (SSRF protection)
+	if validateErr := util.ValidateBaseURL(cfg.BaseURL, *allowPrivateIPs); validateErr != nil {
+		log.Fatalf("Invalid base URL: %v", validateErr)
+	}
+
+	// Warn about allowing private IPs
+	if *allowPrivateIPs {
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
+		fmt.Fprintf(os.Stderr, "║                        SECURITY WARNING                            ║\n")
+		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
+		fmt.Fprintf(os.Stderr, "║  Private/localhost IPs are ALLOWED (-allow-private-ips)            ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  This bypasses SSRF protection. Only use for:                      ║\n")
+		fmt.Fprintf(os.Stderr, "║    • Testing internal/local services you own                       ║\n")
+		fmt.Fprintf(os.Stderr, "║    • Development environments                                      ║\n")
+		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
+		fmt.Fprintf(os.Stderr, "║  NEVER use this with untrusted URL inputs!                        ║\n")
+		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
+		fmt.Fprintf(os.Stderr, "\n")
 	}
 
 	// Warn about insecure TLS skip verify
@@ -449,6 +473,10 @@ OPTIONS:
         INSECURE: Skip TLS certificate verification
         Use ONLY for testing with self-signed certificates
         Makes you vulnerable to man-in-the-middle attacks!
+    -allow-private-ips
+        Allow testing against private/localhost IPs
+        Bypasses SSRF protection for internal testing
+        Only use for services you own or have permission to test
     -ignore-robots
         Ignore robots.txt directives (use responsibly)
         Only use if you OWN the website or have explicit permission
