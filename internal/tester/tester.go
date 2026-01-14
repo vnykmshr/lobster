@@ -277,6 +277,8 @@ func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 		t.logger.Debug("Error creating request in dry-run",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", err)
+		atomic.AddInt64(&t.results.FailedRequests, 1)
+		t.recordError(task.URL, fmt.Sprintf("creating request: %v", err), task.Depth)
 		return
 	}
 
@@ -289,6 +291,8 @@ func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 		t.logger.Debug("Error applying authentication in dry-run",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", err)
+		atomic.AddInt64(&t.results.FailedRequests, 1)
+		t.recordError(task.URL, fmt.Sprintf("applying auth: %v", err), task.Depth)
 		return
 	}
 
@@ -298,6 +302,8 @@ func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 		t.logger.Debug("Error making request in dry-run",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", err)
+		atomic.AddInt64(&t.results.FailedRequests, 1)
+		t.recordError(task.URL, fmt.Sprintf("request failed: %v", err), task.Depth)
 		return
 	}
 	defer func() {
