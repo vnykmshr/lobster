@@ -122,8 +122,23 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n")
 	}
 
-	// Warn about insecure TLS skip verify
+	// Require explicit env var confirmation for insecure TLS
 	if cfg.InsecureSkipVerify {
+		if os.Getenv("LOBSTER_INSECURE_TLS") != "true" {
+			log.Fatalf(`Insecure TLS verification disabled but LOBSTER_INSECURE_TLS=true not set.
+
+This is a security safeguard to prevent accidental TLS bypass in production.
+
+To proceed, set the environment variable:
+  export LOBSTER_INSECURE_TLS=true
+
+Only do this if you understand the security implications:
+  - Man-in-the-middle attacks become possible
+  - Certificate validation is completely bypassed
+  - Use only for testing with self-signed certificates`)
+		}
+
+		// Show warning after env var check passes
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
 		fmt.Fprintf(os.Stderr, "║                        SECURITY WARNING                            ║\n")
