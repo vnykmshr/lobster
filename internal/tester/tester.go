@@ -70,19 +70,29 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		queueSize = 10000
 	}
 
-	// Create HTTP client with optional TLS skip verify
-	httpClient := &http.Client{
-		Timeout: config.RequestTimeout,
+	// Create HTTP Transport with connection pooling for high concurrency
+	// Default net/http Transport has MaxIdleConnsPerHost=2 which bottlenecks parallel requests
+	transport := &http.Transport{
+		MaxIdleConns:        100,                     // Total pool size across all hosts
+		MaxIdleConnsPerHost: config.Concurrency * 2, // Allow 2x concurrency to handle bursts
+		MaxConnsPerHost:     config.Concurrency * 2, // Limit connections per host
+		IdleConnTimeout:     90 * time.Second,       // Keep idle connections alive
+		DisableCompression:  false,                  // Enable gzip for bandwidth savings
+		ForceAttemptHTTP2:   true,                   // Enable HTTP/2 when available (HTTPS)
 	}
 
 	// Configure TLS if InsecureSkipVerify is enabled
 	if config.InsecureSkipVerify {
 		logger.Warn("INSECURE: TLS certificate verification is disabled. Use only for testing with self-signed certificates!")
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true, //nolint:gosec // Intentionally insecure for testing self-signed certs
-			},
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // Intentionally insecure for testing self-signed certs
 		}
+	}
+
+	// Create HTTP client with connection pooling
+	httpClient := &http.Client{
+		Timeout:   config.RequestTimeout,
+		Transport: transport,
 	}
 
 	// Create robots.txt parser and fetch robots.txt
@@ -102,6 +112,11 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		logger.Warn("WARNING: Ignoring robots.txt directives. Please ensure you have permission to test this site!")
 	}
 
+	// Size result channels proportionally to avoid backpressure
+	// Use larger buffers when queue is large to handle burst processing
+	resultBufferSize := min(queueSize, 10000)
+	slowBufferSize := min(queueSize/10, 1000)
+
 	return &Tester{
 		config:          config,
 		client:          httpClient,
@@ -111,10 +126,10 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		crawler:         crawlerInstance,
 		robotsParser:    robotsParser,
 		logger:          logger,
-		validationsCh:   make(chan domain.URLValidation, 1000),
-		errorsCh:        make(chan domain.ErrorInfo, 1000),
-		responseTimesCh: make(chan domain.ResponseTimeEntry, 1000),
-		slowRequestsCh:  make(chan domain.SlowRequest, 100),
+		validationsCh:   make(chan domain.URLValidation, resultBufferSize),
+		errorsCh:        make(chan domain.ErrorInfo, resultBufferSize),
+		responseTimesCh: make(chan domain.ResponseTimeEntry, resultBufferSize),
+		slowRequestsCh:  make(chan domain.SlowRequest, slowBufferSize),
 	}, nil
 }
 
@@ -160,6 +175,13 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 	close(t.responseTimesCh)
 	close(t.slowRequestsCh)
 	aggregatorWg.Wait()
+
+	// Check for dropped URLs and warn user
+	if droppedCount := t.crawler.GetDroppedCount(); droppedCount > 0 {
+		t.logger.Warn("URLs dropped due to queue overflow",
+			"dropped_count", droppedCount,
+			"hint", "Consider increasing --queue-size")
+	}
 
 	// Calculate final results
 	t.calculateResults(time.Since(startTime))
@@ -363,7 +385,8 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 		"links_found", validation.LinksFound)
 }
 
-// makeHTTPRequestWithRetry wraps makeHTTPRequest with exponential backoff retry for 429 responses
+// makeHTTPRequestWithRetry wraps makeHTTPRequest with exponential backoff retry for 429 responses.
+// Returns the actual request duration (excluding backoff time) for accurate latency metrics.
 func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*http.Response, time.Duration, error) {
 	const (
 		maxRetries     = 4 // Max retry attempts for 429
@@ -371,21 +394,23 @@ func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*htt
 		maxBackoff     = 30 * time.Second
 	)
 
-	var totalDuration time.Duration
+	// Track actual request time separately from backoff time
+	// Only request time is used for latency metrics
+	var lastRequestDuration time.Duration
 	backoff := initialBackoff
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		resp, duration, err := t.makeHTTPRequest(ctx, url)
-		totalDuration += duration
+		lastRequestDuration = duration
 
 		// If request failed (network error, etc), return error immediately
 		if err != nil {
-			return nil, totalDuration, err
+			return nil, lastRequestDuration, err
 		}
 
 		// If not 429 or Respect429 is disabled, return response
 		if resp.StatusCode != http.StatusTooManyRequests || !t.config.Respect429 {
-			return resp, totalDuration, nil
+			return resp, lastRequestDuration, nil
 		}
 
 		// Close the 429 response body before retrying
@@ -409,7 +434,7 @@ func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*htt
 		case <-time.After(backoff):
 			// Continue to next attempt
 		case <-ctx.Done():
-			return nil, totalDuration, ctx.Err()
+			return nil, lastRequestDuration, ctx.Err()
 		}
 
 		// Exponential backoff: double each time, cap at maxBackoff
@@ -420,7 +445,7 @@ func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*htt
 	}
 
 	// Should never reach here, but return error just in case
-	return nil, totalDuration, fmt.Errorf("exceeded max retries for 429")
+	return nil, lastRequestDuration, fmt.Errorf("exceeded max retries for 429")
 }
 
 // makeHTTPRequest creates and executes an HTTP request, returning the response and duration
