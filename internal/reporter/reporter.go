@@ -22,6 +22,52 @@ type Reporter struct {
 	results *domain.TestResults
 }
 
+// StatusDistributionEntry represents a single status code distribution entry for templates.
+type StatusDistributionEntry struct {
+	StatusCode  int
+	Count       int
+	Percentage  float64
+	StatusGroup string
+}
+
+// URLValidationEntry represents a URL validation result for template rendering.
+type URLValidationEntry struct {
+	URL           string
+	StatusCode    int
+	StatusGroup   string
+	ResponseTime  string
+	ContentLength int64
+	LinksFound    int
+	Depth         int
+}
+
+// SlowRequestEntry represents a slow request for template rendering.
+type SlowRequestEntry struct {
+	URL          string
+	ResponseTime string
+	StatusCode   int
+	StatusGroup  string
+}
+
+// TemplateData contains all data needed for HTML template rendering.
+type TemplateData struct {
+	Timestamp           string
+	Duration            string
+	TotalRequests       int64
+	SuccessfulRequests  int64
+	FailedRequests      int64
+	URLsDiscovered      int
+	SuccessRate         float64
+	SuccessRateClass    string
+	RequestsPerSecond   float64
+	AverageResponseTime string
+	StatusDistribution  []StatusDistributionEntry
+	URLValidations      []URLValidationEntry
+	SlowRequests        []SlowRequestEntry
+	Errors              []domain.ErrorInfo
+	ResponseTimesMs     []float64
+}
+
 // New creates a new report generator
 func New(results *domain.TestResults) *Reporter {
 	return &Reporter{results: results}
@@ -128,73 +174,52 @@ func (r *Reporter) PrintSummary() {
 }
 
 // prepareTemplateData prepares data for HTML template rendering
-func (r *Reporter) prepareTemplateData() map[string]interface{} {
+func (r *Reporter) prepareTemplateData() *TemplateData {
 	// Calculate status distribution
 	statusCounts := make(map[int]int)
 	for _, validation := range r.results.URLValidations {
 		statusCounts[validation.StatusCode]++
 	}
 
-	statusDistribution := make([]map[string]interface{}, 0, len(statusCounts))
+	statusDistribution := make([]StatusDistributionEntry, 0, len(statusCounts))
 	totalValidations := len(r.results.URLValidations)
 	for status, count := range statusCounts {
 		percentage := float64(count) / float64(totalValidations) * 100
-		statusGroup := "200"
-		if status >= 300 && status < 400 {
-			statusGroup = "300"
-		} else if status >= 400 {
-			statusGroup = "400"
-		}
-
-		statusDistribution = append(statusDistribution, map[string]interface{}{
-			"StatusCode":  status,
-			"Count":       count,
-			"Percentage":  percentage,
-			"StatusGroup": statusGroup,
+		statusDistribution = append(statusDistribution, StatusDistributionEntry{
+			StatusCode:  status,
+			Count:       count,
+			Percentage:  percentage,
+			StatusGroup: statusGroupFromCode(status),
 		})
 	}
 
 	// Sort by status code
 	sort.Slice(statusDistribution, func(i, j int) bool {
-		return statusDistribution[i]["StatusCode"].(int) < statusDistribution[j]["StatusCode"].(int) //nolint:errcheck // Type is guaranteed in template data
+		return statusDistribution[i].StatusCode < statusDistribution[j].StatusCode
 	})
 
 	// Prepare URL validations with status groups
-	urlValidations := make([]map[string]interface{}, 0, len(r.results.URLValidations))
+	urlValidations := make([]URLValidationEntry, 0, len(r.results.URLValidations))
 	for _, validation := range r.results.URLValidations {
-		statusGroup := "200"
-		if validation.StatusCode >= 300 && validation.StatusCode < 400 {
-			statusGroup = "300"
-		} else if validation.StatusCode >= 400 {
-			statusGroup = "400"
-		}
-
-		urlValidations = append(urlValidations, map[string]interface{}{
-			"URL":           validation.URL,
-			"StatusCode":    validation.StatusCode,
-			"StatusGroup":   statusGroup,
-			"ResponseTime":  validation.ResponseTime.String(),
-			"ContentLength": validation.ContentLength,
-			"LinksFound":    validation.LinksFound,
-			"Depth":         validation.Depth,
+		urlValidations = append(urlValidations, URLValidationEntry{
+			URL:           validation.URL,
+			StatusCode:    validation.StatusCode,
+			StatusGroup:   statusGroupFromCode(validation.StatusCode),
+			ResponseTime:  validation.ResponseTime.String(),
+			ContentLength: validation.ContentLength,
+			LinksFound:    validation.LinksFound,
+			Depth:         validation.Depth,
 		})
 	}
 
 	// Prepare slow requests
-	slowRequests := make([]map[string]interface{}, 0, len(r.results.SlowRequests))
+	slowRequests := make([]SlowRequestEntry, 0, len(r.results.SlowRequests))
 	for _, req := range r.results.SlowRequests {
-		statusGroup := "200"
-		if req.StatusCode >= 300 && req.StatusCode < 400 {
-			statusGroup = "300"
-		} else if req.StatusCode >= 400 {
-			statusGroup = "400"
-		}
-
-		slowRequests = append(slowRequests, map[string]interface{}{
-			"URL":          req.URL,
-			"ResponseTime": req.ResponseTime.String(),
-			"StatusCode":   req.StatusCode,
-			"StatusGroup":  statusGroup,
+		slowRequests = append(slowRequests, SlowRequestEntry{
+			URL:          req.URL,
+			ResponseTime: req.ResponseTime.String(),
+			StatusCode:   req.StatusCode,
+			StatusGroup:  statusGroupFromCode(req.StatusCode),
 		})
 	}
 
@@ -213,22 +238,34 @@ func (r *Reporter) prepareTemplateData() map[string]interface{} {
 		successRateClass = "success-low"
 	}
 
-	return map[string]interface{}{
-		"Timestamp":           time.Now().Format("2006-01-02 15:04:05 MST"),
-		"Duration":            r.results.Duration,
-		"TotalRequests":       r.results.TotalRequests,
-		"SuccessfulRequests":  r.results.SuccessfulRequests,
-		"FailedRequests":      r.results.FailedRequests,
-		"URLsDiscovered":      r.results.URLsDiscovered,
-		"SuccessRate":         r.results.SuccessRate,
-		"SuccessRateClass":    successRateClass,
-		"RequestsPerSecond":   r.results.RequestsPerSecond,
-		"AverageResponseTime": r.results.AverageResponseTime,
-		"StatusDistribution":  statusDistribution,
-		"URLValidations":      urlValidations,
-		"SlowRequests":        slowRequests,
-		"Errors":              r.results.Errors,
-		"ResponseTimesMs":     responseTimesMs,
+	return &TemplateData{
+		Timestamp:           time.Now().Format("2006-01-02 15:04:05 MST"),
+		Duration:            r.results.Duration,
+		TotalRequests:       r.results.TotalRequests,
+		SuccessfulRequests:  r.results.SuccessfulRequests,
+		FailedRequests:      r.results.FailedRequests,
+		URLsDiscovered:      r.results.URLsDiscovered,
+		SuccessRate:         r.results.SuccessRate,
+		SuccessRateClass:    successRateClass,
+		RequestsPerSecond:   r.results.RequestsPerSecond,
+		AverageResponseTime: r.results.AverageResponseTime,
+		StatusDistribution:  statusDistribution,
+		URLValidations:      urlValidations,
+		SlowRequests:        slowRequests,
+		Errors:              r.results.Errors,
+		ResponseTimesMs:     responseTimesMs,
+	}
+}
+
+// statusGroupFromCode returns the status group CSS class for a given HTTP status code.
+func statusGroupFromCode(status int) string {
+	switch {
+	case status >= 400:
+		return "400"
+	case status >= 300:
+		return "300"
+	default:
+		return "200"
 	}
 }
 

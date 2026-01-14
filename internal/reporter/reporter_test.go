@@ -210,65 +210,32 @@ func TestPrepareTemplateData(t *testing.T) {
 
 	data := reporter.prepareTemplateData()
 
-	// Verify required keys exist
-	requiredKeys := []string{
-		"Timestamp",
-		"Duration",
-		"TotalRequests",
-		"SuccessfulRequests",
-		"FailedRequests",
-		"URLsDiscovered",
-		"SuccessRate",
-		"SuccessRateClass",
-		"RequestsPerSecond",
-		"AverageResponseTime",
-		"StatusDistribution",
-		"URLValidations",
-		"SlowRequests",
-		"Errors",
-		"ResponseTimesMs",
+	// Verify required fields are populated (typed struct ensures existence)
+	if data.Timestamp == "" {
+		t.Error("Expected Timestamp to be set")
+	}
+	if data.Duration == "" {
+		t.Error("Expected Duration to be set")
 	}
 
-	for _, key := range requiredKeys {
-		if _, ok := data[key]; !ok {
-			t.Errorf("Expected key '%s' in template data", key)
-		}
-	}
-
-	// Verify SuccessRateClass logic
-	successRateClass, ok := data["SuccessRateClass"].(string)
-	if !ok {
-		t.Fatal("Expected SuccessRateClass to be string")
-	}
-
-	// 95% should be "success-high"
-	if successRateClass != "success-high" {
-		t.Errorf("Expected SuccessRateClass 'success-high' for 95%%, got '%s'", successRateClass)
+	// Verify SuccessRateClass logic - 95% should be "success-high"
+	if data.SuccessRateClass != "success-high" {
+		t.Errorf("Expected SuccessRateClass 'success-high' for 95%%, got '%s'", data.SuccessRateClass)
 	}
 
 	// Verify StatusDistribution
-	statusDist, ok := data["StatusDistribution"].([]map[string]interface{})
-	if !ok {
-		t.Fatal("Expected StatusDistribution to be slice of maps")
-	}
-
-	if len(statusDist) == 0 {
+	if len(data.StatusDistribution) == 0 {
 		t.Error("Expected StatusDistribution to have entries")
 	}
 
 	// Verify ResponseTimesMs conversion
-	responseTimesMs, ok := data["ResponseTimesMs"].([]float64)
-	if !ok {
-		t.Fatal("Expected ResponseTimesMs to be []float64")
-	}
-
-	if len(responseTimesMs) != len(results.ResponseTimes) {
-		t.Errorf("Expected %d response times, got %d", len(results.ResponseTimes), len(responseTimesMs))
+	if len(data.ResponseTimesMs) != len(results.ResponseTimes) {
+		t.Errorf("Expected %d response times, got %d", len(results.ResponseTimes), len(data.ResponseTimesMs))
 	}
 
 	// Verify conversion to milliseconds (100ms → 100.0)
-	if responseTimesMs[0] != 100.0 {
-		t.Errorf("Expected first response time 100.0ms, got %.1f", responseTimesMs[0])
+	if data.ResponseTimesMs[0] != 100.0 {
+		t.Errorf("Expected first response time 100.0ms, got %.1f", data.ResponseTimesMs[0])
 	}
 }
 
@@ -294,14 +261,9 @@ func TestPrepareTemplateData_SuccessRateClasses(t *testing.T) {
 			reporter := New(results)
 
 			data := reporter.prepareTemplateData()
-			successRateClass, ok := data["SuccessRateClass"].(string)
-			if !ok {
-				t.Fatal("Expected SuccessRateClass to be string")
-			}
-
-			if successRateClass != tt.expectedClass {
+			if data.SuccessRateClass != tt.expectedClass {
 				t.Errorf("Expected class '%s' for %.1f%%, got '%s'",
-					tt.expectedClass, tt.successRate, successRateClass)
+					tt.expectedClass, tt.successRate, data.SuccessRateClass)
 			}
 		})
 	}
@@ -359,31 +321,23 @@ func TestPrepareTemplateData_StatusDistribution(t *testing.T) {
 	reporter := New(results)
 
 	data := reporter.prepareTemplateData()
-	statusDist, ok := data["StatusDistribution"].([]map[string]interface{})
-	if !ok {
-		t.Fatal("Expected StatusDistribution to be []map[string]interface{}")
-	}
 
 	// Should have 4 unique status codes
-	if len(statusDist) != 4 {
-		t.Errorf("Expected 4 unique status codes, got %d", len(statusDist))
+	if len(data.StatusDistribution) != 4 {
+		t.Errorf("Expected 4 unique status codes, got %d", len(data.StatusDistribution))
 	}
 
 	// Verify status code 200 has count 2
 	found200 := false
-	for _, entry := range statusDist {
-		if entry["StatusCode"] == 200 {
+	for _, entry := range data.StatusDistribution {
+		if entry.StatusCode == 200 {
 			found200 = true
-			if entry["Count"] != 2 {
-				t.Errorf("Expected count 2 for status 200, got %v", entry["Count"])
+			if entry.Count != 2 {
+				t.Errorf("Expected count 2 for status 200, got %d", entry.Count)
 			}
 			// 2 out of 5 = 40%
-			percentage, percentageOK := entry["Percentage"].(float64)
-			if !percentageOK {
-				t.Fatal("Expected Percentage to be float64")
-			}
-			if percentage != 40.0 {
-				t.Errorf("Expected 40%% for status 200, got %.1f", percentage)
+			if entry.Percentage != 40.0 {
+				t.Errorf("Expected 40%% for status 200, got %.1f", entry.Percentage)
 			}
 		}
 	}
@@ -407,23 +361,11 @@ func TestPrepareTemplateData_StatusGroups(t *testing.T) {
 	reporter := New(results)
 
 	data := reporter.prepareTemplateData()
-	urlValidations, ok := data["URLValidations"].([]map[string]interface{})
-	if !ok {
-		t.Fatal("Expected URLValidations to be []map[string]interface{}")
-	}
 
 	// Verify status groups
 	statusGroups := make(map[int]string)
-	for _, v := range urlValidations {
-		statusCode, codeOK := v["StatusCode"].(int)
-		if !codeOK {
-			t.Fatal("Expected StatusCode to be int")
-		}
-		statusGroup, groupOK := v["StatusGroup"].(string)
-		if !groupOK {
-			t.Fatal("Expected StatusGroup to be string")
-		}
-		statusGroups[statusCode] = statusGroup
+	for _, v := range data.URLValidations {
+		statusGroups[v.StatusCode] = v.StatusGroup
 	}
 
 	if statusGroups[200] != "200" {
@@ -476,20 +418,12 @@ func TestPrepareTemplateData_EmptyResults(t *testing.T) {
 	// Should not panic with empty data
 	data := reporter.prepareTemplateData()
 
-	statusDist, ok := data["StatusDistribution"].([]map[string]interface{})
-	if !ok {
-		t.Fatal("Expected StatusDistribution to be []map[string]interface{}")
-	}
-	if len(statusDist) != 0 {
-		t.Errorf("Expected empty status distribution, got %d entries", len(statusDist))
+	if len(data.StatusDistribution) != 0 {
+		t.Errorf("Expected empty status distribution, got %d entries", len(data.StatusDistribution))
 	}
 
-	responseTimesMs, ok := data["ResponseTimesMs"].([]float64)
-	if !ok {
-		t.Fatal("Expected ResponseTimesMs to be []float64")
-	}
-	if len(responseTimesMs) != 0 {
-		t.Errorf("Expected empty response times, got %d entries", len(responseTimesMs))
+	if len(data.ResponseTimesMs) != 0 {
+		t.Errorf("Expected empty response times, got %d entries", len(data.ResponseTimesMs))
 	}
 }
 
