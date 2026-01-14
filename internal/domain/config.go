@@ -189,5 +189,13 @@ func (a *AuthConfig) Validate() error {
 		return fmt.Errorf("bearer auth requires token")
 	}
 
+	if a.Type == "cookie" && len(a.Cookies) == 0 && a.CookieFile == "" {
+		return fmt.Errorf("cookie auth requires cookies or cookie_file")
+	}
+
+	if a.Type == "header" && len(a.Headers) == 0 {
+		return fmt.Errorf("header auth requires headers")
+	}
+
 	return nil
 }

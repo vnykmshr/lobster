@@ -238,6 +238,31 @@ func TestAuthConfig_Validate(t *testing.T) {
 			auth:    AuthConfig{Type: "bearer"},
 			wantErr: "bearer auth requires token",
 		},
+		{
+			name:    "valid cookie with cookies",
+			auth:    AuthConfig{Type: "cookie", Cookies: map[string]string{"session": "abc"}},
+			wantErr: "",
+		},
+		{
+			name:    "valid cookie with cookie_file",
+			auth:    AuthConfig{Type: "cookie", CookieFile: "/path/to/cookies.txt"},
+			wantErr: "",
+		},
+		{
+			name:    "cookie without cookies or file",
+			auth:    AuthConfig{Type: "cookie"},
+			wantErr: "cookie auth requires cookies or cookie_file",
+		},
+		{
+			name:    "valid header",
+			auth:    AuthConfig{Type: "header", Headers: map[string]string{"X-API-Key": "secret"}},
+			wantErr: "",
+		},
+		{
+			name:    "header without headers",
+			auth:    AuthConfig{Type: "header"},
+			wantErr: "header auth requires headers",
+		},
 	}
 
 	for _, tt := range tests {
