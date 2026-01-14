@@ -466,7 +466,7 @@ func (t *Tester) applyAuthentication(req *http.Request) error {
 		// Basic authentication: username:password
 		if auth.Username != "" {
 			req.SetBasicAuth(auth.Username, auth.Password)
-			t.logger.Debug("Applied basic authentication", "username", auth.Username)
+			t.logger.Debug("Applied basic authentication")
 		}
 
 	case "bearer":
