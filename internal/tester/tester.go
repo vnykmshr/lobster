@@ -71,8 +71,9 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 
 		rateLimiter, err = bucket.NewSafe(bucket.Limit(config.Rate), burst)
 		if err != nil {
-			logger.Error("Failed to create rate limiter", "error", err)
-			rateLimiter = nil
+			// Rate limiting was explicitly requested - fail rather than silently proceed
+			// without it, which could cause unintended DoS against the target
+			return nil, fmt.Errorf("creating rate limiter (rate=%.2f): %w", config.Rate, err)
 		}
 	}
 
