@@ -291,6 +291,37 @@ func TestFetchAndParse_ServerError(t *testing.T) {
 	}
 }
 
+func TestFetchAndParse_Timeout(t *testing.T) {
+	// Server that delays response beyond the context timeout
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("User-agent: *\nDisallow: /admin/"))
+	}))
+	defer server.Close()
+
+	parser := New("TestBot/1.0")
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	err := parser.FetchAndParse(ctx, server.URL)
+
+	// Should return context deadline exceeded error
+	if err == nil {
+		t.Fatal("Expected error on timeout, got nil")
+	}
+
+	// Verify the error is related to the deadline
+	if ctx.Err() == nil {
+		t.Error("Expected context to be cancelled after timeout")
+	}
+
+	// Should be conservative and disallow everything after timeout error
+	if parser.IsAllowed("/anything") {
+		t.Error("Expected all paths to be disallowed after timeout error")
+	}
+}
+
 func TestIsAllowed_NoRobotsTxt(t *testing.T) {
 	parser := New("TestBot/1.0")
 	// Don't fetch robots.txt

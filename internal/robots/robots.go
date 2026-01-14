@@ -58,7 +58,15 @@ func (p *Parser) FetchAndParse(ctx context.Context, baseURL string) error {
 	// Fetch robots.txt
 	resp, err := client.Do(req)
 	if err != nil {
-		// If robots.txt doesn't exist or network error, allow crawling
+		// Context errors (timeout, cancellation) should be propagated
+		// to inform caller and trigger conservative blocking
+		if ctx.Err() != nil {
+			p.robotsTxtFound = true
+			p.disallowPaths = append(p.disallowPaths, "/") // Disallow everything
+			return fmt.Errorf("fetching robots.txt: %w", ctx.Err())
+		}
+		// For other network errors (connection refused, DNS failure, etc.)
+		// allow crawling - we couldn't reach the server
 		return nil
 	}
 	defer func() {
