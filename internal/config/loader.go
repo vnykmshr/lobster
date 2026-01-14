@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/vnykmshr/lobster/internal/domain"
 )
+
+// envVarPattern matches ${VAR_NAME} or ${VAR_NAME:-default} syntax
+var envVarPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}`)
 
 // Loader handles loading configuration from various sources
 type Loader struct{}
@@ -17,20 +21,65 @@ func NewLoader() *Loader {
 	return &Loader{}
 }
 
-// LoadFromFile loads configuration from a JSON file
+// LoadFromFile loads configuration from a JSON file.
+// Supports environment variable substitution using ${VAR_NAME} syntax.
+// Optional default values can be specified with ${VAR_NAME:-default}.
 func (l *Loader) LoadFromFile(path string) (*domain.Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read config file %s: %w\nCheck if file exists and has read permissions", path, err)
 	}
 
+	// Substitute environment variables before parsing JSON
+	expandedData, err := substituteEnvVars(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("environment variable substitution failed: %w", err)
+	}
+
 	var config domain.Config
-	err = json.Unmarshal(data, &config)
+	err = json.Unmarshal([]byte(expandedData), &config)
 	if err != nil {
 		return nil, fmt.Errorf("invalid JSON in config file: %w\nVerify JSON syntax at %s", err, path)
 	}
 
 	return &config, nil
+}
+
+// substituteEnvVars replaces ${VAR_NAME} patterns with environment variable values.
+// Supports ${VAR_NAME:-default} syntax for default values when env var is not set.
+// Returns an error if a required env var (no default) is not set.
+func substituteEnvVars(content string) (string, error) {
+	var missingVars []string
+
+	result := envVarPattern.ReplaceAllStringFunc(content, func(match string) string {
+		submatches := envVarPattern.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		varName := submatches[1]
+		defaultValue := ""
+		hasDefault := len(submatches) > 2 && submatches[2] != ""
+		if hasDefault {
+			defaultValue = submatches[2]
+		}
+
+		value := os.Getenv(varName)
+		if value == "" {
+			if hasDefault {
+				return defaultValue
+			}
+			missingVars = append(missingVars, varName)
+			return match // Keep original placeholder for error reporting
+		}
+		return value
+	})
+
+	if len(missingVars) > 0 {
+		return "", fmt.Errorf("missing required environment variables: %v\nSet these variables or provide defaults using ${VAR:-default} syntax", missingVars)
+	}
+
+	return result, nil
 }
 
 // SaveToFile saves configuration to a JSON file

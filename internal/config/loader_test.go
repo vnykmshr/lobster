@@ -262,3 +262,119 @@ func TestMergeWithDefaults_FullConfig(t *testing.T) {
 		t.Errorf("Custom RequestsPerSecond not preserved")
 	}
 }
+
+func TestLoadFromFile_EnvVarSubstitution(t *testing.T) {
+	// Set test environment variables
+	t.Setenv("TEST_BASE_URL", "http://env-test.com")
+	t.Setenv("TEST_PASSWORD", "secret123")
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "env-config.json")
+
+	configJSON := `{
+		"base_url": "${TEST_BASE_URL}",
+		"concurrency": 5,
+		"duration": "1m",
+		"auth": {
+			"type": "basic",
+			"username": "admin",
+			"password": "${TEST_PASSWORD}"
+		}
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	loader := NewLoader()
+	config, err := loader.LoadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile() returned error: %v", err)
+	}
+
+	if config.BaseURL != "http://env-test.com" {
+		t.Errorf("Expected BaseURL 'http://env-test.com', got '%s'", config.BaseURL)
+	}
+	if config.Auth == nil || config.Auth.Password != "secret123" {
+		t.Errorf("Expected Auth.Password 'secret123', got '%v'", config.Auth)
+	}
+}
+
+func TestLoadFromFile_EnvVarWithDefault(t *testing.T) {
+	// Don't set MISSING_VAR - it should use the default
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "default-config.json")
+
+	configJSON := `{
+		"base_url": "${MISSING_VAR:-http://default.com}",
+		"concurrency": 5,
+		"duration": "1m"
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	loader := NewLoader()
+	config, err := loader.LoadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile() returned error: %v", err)
+	}
+
+	if config.BaseURL != "http://default.com" {
+		t.Errorf("Expected BaseURL 'http://default.com' (default), got '%s'", config.BaseURL)
+	}
+}
+
+func TestLoadFromFile_MissingRequiredEnvVar(t *testing.T) {
+	// Don't set REQUIRED_VAR - should cause an error
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "missing-config.json")
+
+	configJSON := `{
+		"base_url": "${REQUIRED_VAR_THAT_DOES_NOT_EXIST}",
+		"concurrency": 5,
+		"duration": "1m"
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	loader := NewLoader()
+	_, err = loader.LoadFromFile(configPath)
+	if err == nil {
+		t.Error("Expected error for missing required env var, got nil")
+	}
+}
+
+func TestSubstituteEnvVars_MultipleVars(t *testing.T) {
+	t.Setenv("VAR_A", "valueA")
+	t.Setenv("VAR_B", "valueB")
+
+	input := `{"a": "${VAR_A}", "b": "${VAR_B}"}`
+	result, err := substituteEnvVars(input)
+	if err != nil {
+		t.Fatalf("substituteEnvVars() returned error: %v", err)
+	}
+
+	expected := `{"a": "valueA", "b": "valueB"}`
+	if result != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, result)
+	}
+}
+
+func TestSubstituteEnvVars_NoVars(t *testing.T) {
+	input := `{"base_url": "http://example.com"}`
+	result, err := substituteEnvVars(input)
+	if err != nil {
+		t.Fatalf("substituteEnvVars() returned error: %v", err)
+	}
+
+	if result != input {
+		t.Errorf("Expected unchanged input, got '%s'", result)
+	}
+}
