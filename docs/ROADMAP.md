@@ -12,9 +12,9 @@ This roadmap outlines the phased approach to maturing Lobster into a production-
 
 ---
 
-## Phase 1: Foundation (v0.1.0 - v0.3.0)
+## Phase 1: Foundation (v0.1.0 - v1.0.0)
 **Timeline**: Weeks 1-4
-**Status**: 🚧 In Progress
+**Status**: ✅ Complete (Released 2025-10-26)
 
 ### Goals
 Establish core functionality with production-quality code and documentation.
@@ -30,21 +30,22 @@ Establish core functionality with production-quality code and documentation.
 - [x] Unit tests for core components (tester: 86.9%, config: 95.2%, crawler: 94.9%)
 - [x] Integration tests for end-to-end flows (6 comprehensive tests)
 
-#### v0.2.0 - Enhanced Reporting
-- [ ] HTML report generation with Chart.js
-- [ ] JSON output for programmatic consumption
-- [ ] CSV export for spreadsheet analysis
-- [ ] Performance validation framework
-- [ ] Configurable performance targets
-- [ ] Custom report templates
-
-#### v0.3.0 - Configuration & Usability
-- [ ] JSON/YAML configuration file support
-- [ ] Environment variable configuration
-- [ ] Profile support (dev, staging, prod)
-- [ ] Improved error messages and help text
-- [ ] Progress bar with ETA
-- [ ] Summary statistics in terminal
+#### v1.0.0 - Production Ready ✅
+- [x] HTML report generation with Chart.js
+- [x] JSON output for programmatic consumption
+- [x] Performance validation framework
+- [x] Configurable performance targets
+- [x] JSON configuration file support
+- [x] Environment variable configuration
+- [x] Improved error messages and help text
+- [x] Progress bar with request statistics
+- [x] Summary statistics in terminal
+- [x] Cookie and header authentication
+- [x] Basic HTTP authentication
+- [x] Bearer token support
+- [x] robots.txt compliance
+- [x] HTTP 429 rate limit handling
+- [x] Dry-run mode for URL discovery
 
 ### Success Metrics
 - ✅ Tool successfully tests 10+ different applications
@@ -54,8 +55,50 @@ Establish core functionality with production-quality code and documentation.
 
 ---
 
-## Phase 2: Authentication & Real-World Scenarios (v0.4.0 - v0.6.0)
-**Timeline**: Weeks 5-10
+## v2.0.0 - Security & Performance (Current)
+**Timeline**: 2026-01
+**Status**: 🚧 In Progress
+
+### Goals
+Harden security, improve performance, and establish best practices for credential handling.
+
+### Deliverables
+
+#### Security Hardening ✅
+- [x] Remove credential CLI flags (passwords, tokens exposed in process list)
+- [x] Environment variable substitution in config files (`${VAR_NAME}`)
+- [x] `--auth-password-stdin` and `--auth-token-stdin` for piped secrets
+- [x] SSRF protection (block private IP ranges by default)
+- [x] URL scheme validation (http/https only)
+- [x] Error message sanitization (hide internal infrastructure details)
+- [x] Require env var confirmation for insecure TLS (`LOBSTER_INSECURE_TLS=true`)
+- [x] Response size validation (prevent memory exhaustion)
+- [x] Improved robots.txt wildcard matching
+
+#### Performance Optimization ✅
+- [x] HTTP connection pooling (50%+ throughput improvement)
+- [x] O(1) URL discovery counting (was O(n) iterating sync.Map)
+- [x] Dropped URL tracking with user warnings
+- [x] Dynamic channel buffer sizing based on concurrency
+- [x] HTTP/2 enabled by default (`ForceAttemptHTTP2`)
+- [x] Accurate 429 retry timing (separate from response time)
+
+#### Architecture Improvements ✅
+- [x] Config and auth validation methods
+- [x] Warning box helper to reduce code duplication
+- [x] Extract magic numbers to named constants
+- [x] Comprehensive Godoc documentation
+
+### Success Metrics
+- ✅ Credentials no longer exposed in process list
+- ✅ SSRF protection blocks unauthorized private network access
+- ✅ 50%+ throughput improvement at high concurrency
+- ✅ Breaking changes documented with migration guide
+
+---
+
+## Phase 2: Advanced Features (v2.1.0+)
+**Timeline**: Future
 **Status**: 📋 Planned
 
 ### Goals
@@ -63,15 +106,7 @@ Enable testing of authenticated applications and complex user flows.
 
 ### Deliverables
 
-#### v0.4.0 - Authentication Support
-- [ ] Cookie-based session management
-- [ ] Basic HTTP authentication
-- [ ] Custom header injection
-- [ ] Login flow automation (form-based)
-- [ ] Session persistence between requests
-- [ ] Multi-step authentication flows
-
-#### v0.5.0 - Advanced Request Handling
+#### v2.1.0 - Advanced Request Handling
 - [ ] POST/PUT/DELETE request support
 - [ ] Request body templates (JSON, form-data)
 - [ ] Custom request scenarios (YAML/JSON)
@@ -79,12 +114,11 @@ Enable testing of authenticated applications and complex user flows.
 - [ ] Content-type specific handling
 - [ ] Response assertions
 
-#### v0.6.0 - JWT & OAuth
+#### v2.2.0 - JWT & OAuth
 - [ ] JWT token management
 - [ ] OAuth 2.0 flow support
 - [ ] Token refresh handling
 - [ ] API key authentication
-- [ ] Bearer token injection
 - [ ] Credential management (secure storage)
 
 ### Success Metrics
@@ -356,6 +390,6 @@ We welcome community input on this roadmap!
 
 ---
 
-**Last Updated**: 2025-10-26
-**Next Review**: 2025-11-26
+**Last Updated**: 2026-01-15
+**Next Review**: 2026-02-15
 **Owner**: @vnykmshr

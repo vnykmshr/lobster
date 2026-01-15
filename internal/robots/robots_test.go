@@ -291,6 +291,37 @@ func TestFetchAndParse_ServerError(t *testing.T) {
 	}
 }
 
+func TestFetchAndParse_Timeout(t *testing.T) {
+	// Server that delays response beyond the context timeout
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("User-agent: *\nDisallow: /admin/"))
+	}))
+	defer server.Close()
+
+	parser := New("TestBot/1.0")
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	err := parser.FetchAndParse(ctx, server.URL)
+
+	// Should return context deadline exceeded error
+	if err == nil {
+		t.Fatal("Expected error on timeout, got nil")
+	}
+
+	// Verify the error is related to the deadline
+	if ctx.Err() == nil {
+		t.Error("Expected context to be canceled after timeout")
+	}
+
+	// Should be conservative and disallow everything after timeout error
+	if parser.IsAllowed("/anything") {
+		t.Error("Expected all paths to be disallowed after timeout error")
+	}
+}
+
 func TestIsAllowed_NoRobotsTxt(t *testing.T) {
 	parser := New("TestBot/1.0")
 	// Don't fetch robots.txt
@@ -326,13 +357,46 @@ func TestMatchesPath(t *testing.T) {
 		robotsPath string
 		matches    bool
 	}{
+		// Basic prefix matching
 		{"/admin/users", "/admin/", true},
 		{"/admin", "/admin/", false},
 		{"/public/page", "/admin/", false},
-		{"/data.php", "/*.php", true},
+
+		// Wildcard at end (suffix matching)
 		{"/temp/file", "/temp*", true},
 		{"/temporary/data", "/temp*", true},
 		{"/test", "/temp*", false},
+		{"/admin", "/admin*", true},
+		{"/admin/users", "/admin*", true},
+		{"/administrator", "/admin*", true},
+
+		// Wildcard matching .php anywhere in path
+		{"/data.php", "/*.php", true},
+		{"/dir/file.php", "/*.php", true},
+		{"/deep/nested/path/script.php", "/*.php", true},
+		{"/data.html", "/*.php", false},
+		{"/index.php/extra", "/*.php", true}, // .php is in path
+
+		// Middle wildcard
+		{"/admin/users/123", "/admin/*/123", true},
+		{"/admin/x/123", "/admin/*/123", true},
+		{"/admin/123", "/admin/*/123", false}, // needs something between
+
+		// $ anchor (end of URL)
+		{"/index.html", "/*.html$", true},
+		{"/index.html/extra", "/*.html$", false}, // doesn't end with .html
+		{"/page", "/page$", true},
+		{"/page/extra", "/page$", false},
+
+		// Multiple wildcards
+		{"/a/b/c", "/a/*/c", true},
+		{"/a/x/y/c", "/a/*/c", true}, // * matches "x/y"
+
+		// Edge cases
+		{"", "/", false},         // empty path doesn't match /
+		{"/", "/", true},         // root matches root
+		{"/foo", "", false},      // empty pattern matches nothing
+		{"/path", "/path", true}, // exact match
 	}
 
 	for _, tt := range tests {
@@ -342,6 +406,49 @@ func TestMatchesPath(t *testing.T) {
 				t.Errorf("matchesPath(%s, %s) = %v, want %v",
 					tt.urlPath, tt.robotsPath, result, tt.matches)
 			}
+		})
+	}
+}
+
+func TestParse_SizeLimit(t *testing.T) {
+	// Create a robots.txt larger than the limit
+	largeContent := "User-agent: *\nDisallow: /test\n"
+	// Repeat until we exceed maxRobotsTxtSize (1MB)
+	for len(largeContent) < 2*1024*1024 {
+		largeContent += "Disallow: /path" + strings.Repeat("x", 1000) + "\n"
+	}
+
+	parser := New("TestBot/1.0")
+	err := parser.Parse(strings.NewReader(largeContent))
+
+	// Should not error - just truncate
+	if err != nil {
+		t.Errorf("Parse with large content should not error, got: %v", err)
+	}
+
+	// The first rule should still be parsed
+	parser.robotsTxtFound = true
+	if parser.IsAllowed("/test") {
+		t.Error("Expected /test to be disallowed")
+	}
+}
+
+func TestMatchesPath_MalformedPatterns(t *testing.T) {
+	// Test that malformed patterns don't crash
+	tests := []struct {
+		urlPath    string
+		robotsPath string
+	}{
+		{"/path", "***"},
+		{"/path", "*/*/*/*"},
+		{"/path", "/$$$"},
+		{"/path", "/*$*"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.robotsPath, func(_ *testing.T) {
+			// Should not panic
+			_ = matchesPath(tt.urlPath, tt.robotsPath)
 		})
 	}
 }

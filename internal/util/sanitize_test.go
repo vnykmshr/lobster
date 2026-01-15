@@ -179,3 +179,147 @@ func TestSanitizeURL_NoSensitiveMatch(t *testing.T) {
 		t.Errorf("URL without sensitive params should be unchanged, got: %s", result)
 	}
 }
+
+func TestSanitizeError_IPv4(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple IP",
+			input:    "connection refused to 192.168.1.100",
+			expected: "connection refused to [IP]",
+		},
+		{
+			name:     "IP with port",
+			input:    "dial tcp 10.0.0.1:8080: connection refused",
+			expected: "dial tcp [IP]:8080: connection refused",
+		},
+		{
+			name:     "multiple IPs",
+			input:    "forwarded from 172.16.0.1 to 172.16.0.2",
+			expected: "forwarded from [IP] to [IP]",
+		},
+		{
+			name:     "loopback",
+			input:    "connect 127.0.0.1:3000 refused",
+			expected: "connect [IP]:3000 refused",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := SanitizeError(tt.input)
+			if result != tt.expected {
+				t.Errorf("SanitizeError() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSanitizeError_InternalHostnames(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "localhost",
+			input:    "cannot connect to localhost:8080",
+			expected: "cannot connect to [internal-host]:8080",
+		},
+		{
+			name:     "internal subdomain",
+			input:    "error from internal.company.com",
+			expected: "error from [internal-host]",
+		},
+		{
+			name:     "staging server",
+			input:    "staging.api.example.com returned 500",
+			expected: "[internal-host] returned 500",
+		},
+		{
+			name:     "dev environment",
+			input:    "dev-server.local failed",
+			expected: "[internal-host]-server.[internal-host] failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := SanitizeError(tt.input)
+			if result != tt.expected {
+				t.Errorf("SanitizeError() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSanitizeError_FilePaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "deep path",
+			input:    "file not found: /var/log/app/errors.log",
+			expected: "file not found: [path]",
+		},
+		{
+			name:     "short path preserved",
+			input:    "error in /var/log",
+			expected: "error in /var/log",
+		},
+		{
+			name:     "home directory",
+			input:    "loading /home/user/config/settings.json",
+			expected: "loading [path]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := SanitizeError(tt.input)
+			if result != tt.expected {
+				t.Errorf("SanitizeError() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSanitizeError_Empty(t *testing.T) {
+	result := SanitizeError("")
+	if result != "" {
+		t.Errorf("SanitizeError(\"\") = %q, want \"\"", result)
+	}
+}
+
+func TestSanitizeError_NoSensitiveData(t *testing.T) {
+	input := "request timeout after 30s"
+	result := SanitizeError(input)
+	if result != input {
+		t.Errorf("SanitizeError() = %q, want %q", result, input)
+	}
+}
+
+func TestSanitizeErrorForDisplay_Verbose(t *testing.T) {
+	input := "connection to 192.168.1.1:8080 failed"
+	result := SanitizeErrorForDisplay(input, true)
+
+	// In verbose mode, original error should be returned
+	if result != input {
+		t.Errorf("SanitizeErrorForDisplay(verbose=true) = %q, want %q", result, input)
+	}
+}
+
+func TestSanitizeErrorForDisplay_NonVerbose(t *testing.T) {
+	input := "connection to 192.168.1.1:8080 failed"
+	expected := "connection to [IP]:8080 failed"
+	result := SanitizeErrorForDisplay(input, false)
+
+	if result != expected {
+		t.Errorf("SanitizeErrorForDisplay(verbose=false) = %q, want %q", result, expected)
+	}
+}

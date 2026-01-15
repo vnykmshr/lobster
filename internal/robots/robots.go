@@ -58,7 +58,15 @@ func (p *Parser) FetchAndParse(ctx context.Context, baseURL string) error {
 	// Fetch robots.txt
 	resp, err := client.Do(req)
 	if err != nil {
-		// If robots.txt doesn't exist or network error, allow crawling
+		// Context errors (timeout, cancellation) should be propagated
+		// to inform caller and trigger conservative blocking
+		if ctx.Err() != nil {
+			p.robotsTxtFound = true
+			p.disallowPaths = append(p.disallowPaths, "/") // Disallow everything
+			return fmt.Errorf("fetching robots.txt: %w", ctx.Err())
+		}
+		// For other network errors (connection refused, DNS failure, etc.)
+		// allow crawling - we couldn't reach the server
 		return nil
 	}
 	defer func() {
@@ -86,9 +94,14 @@ func (p *Parser) FetchAndParse(ctx context.Context, baseURL string) error {
 	return nil
 }
 
+// Maximum size of robots.txt to parse (1MB)
+const maxRobotsTxtSize = 1 * 1024 * 1024
+
 // Parse parses robots.txt content from a reader
 func (p *Parser) Parse(reader io.Reader) error {
-	scanner := bufio.NewScanner(reader)
+	// Limit reading to prevent memory exhaustion from malicious robots.txt
+	limitedReader := io.LimitReader(reader, maxRobotsTxtSize)
+	scanner := bufio.NewScanner(limitedReader)
 	inMatchingUserAgent := false
 	foundAnyUserAgent := false
 
@@ -212,41 +225,67 @@ func (p *Parser) RobotsTxtFound() bool {
 	return p.robotsTxtFound
 }
 
-// matchesPath checks if a URL path matches a robots.txt path pattern
+// matchesPath checks if a URL path matches a robots.txt path pattern.
+// Supports wildcards per Google's robots.txt specification:
+// - * matches any sequence of characters
+// - $ matches end of URL path
+// - Patterns are matched against URL path (case-sensitive)
 func matchesPath(urlPath, robotsPath string) bool {
-	// Handle wildcard patterns
-	if strings.Contains(robotsPath, "*") {
-		// Pattern with wildcard at the end: /temp* matches /temp, /temporary, etc.
-		if strings.HasSuffix(robotsPath, "*") {
-			prefix := strings.TrimSuffix(robotsPath, "*")
-			return strings.HasPrefix(urlPath, prefix)
-		}
-
-		// Pattern with wildcard at the start: /*.php matches /index.php, /data.php, etc.
-		if strings.HasPrefix(robotsPath, "/") && strings.Contains(robotsPath, "*") {
-			// Split on wildcard
-			parts := strings.SplitN(robotsPath, "*", 2)
-			before := parts[0]
-			after := ""
-			if len(parts) > 1 {
-				after = parts[1]
-			}
-
-			// Check if URL starts with the part before * and ends with the part after *
-			if !strings.HasPrefix(urlPath, before) {
-				return false
-			}
-			if after != "" && !strings.HasSuffix(urlPath, after) {
-				return false
-			}
-			return true
-		}
-
-		// For other complex wildcards, do simple contains check
-		pattern := strings.ReplaceAll(robotsPath, "*", "")
-		return strings.Contains(urlPath, pattern)
+	// Empty pattern matches nothing
+	if robotsPath == "" {
+		return false
 	}
 
-	// Exact prefix match
+	// Handle $ anchor at end (matches end of URL)
+	if strings.HasSuffix(robotsPath, "$") {
+		// Remove $ and check if pattern matches exactly
+		pattern := strings.TrimSuffix(robotsPath, "$")
+		if strings.Contains(pattern, "*") {
+			return matchWildcard(urlPath, pattern, true)
+		}
+		return urlPath == pattern
+	}
+
+	// Handle wildcard patterns
+	if strings.Contains(robotsPath, "*") {
+		return matchWildcard(urlPath, robotsPath, false)
+	}
+
+	// Exact prefix match (standard robots.txt behavior)
 	return strings.HasPrefix(urlPath, robotsPath)
+}
+
+// matchWildcard matches a path against a pattern with wildcards.
+// exactEnd means the pattern must match the end of urlPath ($ anchor).
+func matchWildcard(urlPath, pattern string, exactEnd bool) bool {
+	// Split pattern on wildcards
+	parts := strings.Split(pattern, "*")
+
+	// Empty parts from consecutive wildcards or leading/trailing wildcards
+	pos := 0
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		// Find this part in the remaining path
+		idx := strings.Index(urlPath[pos:], part)
+		if idx == -1 {
+			return false
+		}
+
+		// For the first part, it must match at the start (prefix matching)
+		if i == 0 && idx != 0 {
+			return false
+		}
+
+		pos += idx + len(part)
+	}
+
+	// If exactEnd ($), the pattern must have consumed the entire path
+	if exactEnd {
+		return pos == len(urlPath)
+	}
+
+	return true
 }

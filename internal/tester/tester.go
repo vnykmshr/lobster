@@ -4,6 +4,7 @@ package tester
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -22,15 +23,27 @@ import (
 	"github.com/vnykmshr/lobster/internal/util"
 )
 
+const (
+	// defaultSlowRequestThreshold is the response time above which requests are flagged as slow.
+	defaultSlowRequestThreshold = 2 * time.Second
+
+	// linkExtractionLimit is the maximum bytes to read for link discovery.
+	// 64KB is sufficient for most pages as links are typically in the head/upper body.
+	linkExtractionLimit = 64 * 1024
+
+	// defaultQueueSize is the default URL queue capacity when not configured.
+	defaultQueueSize = 10000
+)
+
 // Tester orchestrates the stress testing process
 type Tester struct {
 	config       domain.TesterConfig
 	client       *http.Client
 	urlQueue     chan domain.URLTask
 	results      *domain.TestResults
-	rateLimiter  bucket.Limiter
-	crawler      *crawler.Crawler
-	robotsParser *robots.Parser
+	rateLimiter  domain.RateLimiter
+	crawler      domain.URLCrawler
+	robotsParser domain.RobotsChecker
 	logger       *slog.Logger
 
 	// Result channels for lock-free aggregation
@@ -59,30 +72,41 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 
 		rateLimiter, err = bucket.NewSafe(bucket.Limit(config.Rate), burst)
 		if err != nil {
-			logger.Error("Failed to create rate limiter", "error", err)
-			rateLimiter = nil
+			// Rate limiting was explicitly requested - fail rather than silently proceed
+			// without it, which could cause unintended DoS against the target
+			return nil, fmt.Errorf("creating rate limiter (rate=%.2f): %w", config.Rate, err)
 		}
 	}
 
-	// Use configured queue size, default to 10000 if not set
+	// Use configured queue size, default to defaultQueueSize if not set
 	queueSize := config.QueueSize
 	if queueSize <= 0 {
-		queueSize = 10000
+		queueSize = defaultQueueSize
 	}
 
-	// Create HTTP client with optional TLS skip verify
-	httpClient := &http.Client{
-		Timeout: config.RequestTimeout,
+	// Create HTTP Transport with connection pooling for high concurrency
+	// Default net/http Transport has MaxIdleConnsPerHost=2 which bottlenecks parallel requests
+	transport := &http.Transport{
+		MaxIdleConns:        100,                    // Total pool size across all hosts
+		MaxIdleConnsPerHost: config.Concurrency * 2, // Allow 2x concurrency to handle bursts
+		MaxConnsPerHost:     config.Concurrency * 2, // Limit connections per host
+		IdleConnTimeout:     90 * time.Second,       // Keep idle connections alive
+		DisableCompression:  false,                  // Enable gzip for bandwidth savings
+		ForceAttemptHTTP2:   true,                   // Enable HTTP/2 when available (HTTPS)
 	}
 
 	// Configure TLS if InsecureSkipVerify is enabled
 	if config.InsecureSkipVerify {
 		logger.Warn("INSECURE: TLS certificate verification is disabled. Use only for testing with self-signed certificates!")
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true, //nolint:gosec // Intentionally insecure for testing self-signed certs
-			},
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // Intentionally insecure for testing self-signed certs
 		}
+	}
+
+	// Create HTTP client with connection pooling
+	httpClient := &http.Client{
+		Timeout:   config.RequestTimeout,
+		Transport: transport,
 	}
 
 	// Create robots.txt parser and fetch robots.txt
@@ -102,6 +126,11 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		logger.Warn("WARNING: Ignoring robots.txt directives. Please ensure you have permission to test this site!")
 	}
 
+	// Size result channels proportionally to avoid backpressure
+	// Use larger buffers when queue is large to handle burst processing
+	resultBufferSize := min(queueSize, 10000)
+	slowBufferSize := min(queueSize/10, 1000)
+
 	return &Tester{
 		config:          config,
 		client:          httpClient,
@@ -111,10 +140,10 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 		crawler:         crawlerInstance,
 		robotsParser:    robotsParser,
 		logger:          logger,
-		validationsCh:   make(chan domain.URLValidation, 1000),
-		errorsCh:        make(chan domain.ErrorInfo, 1000),
-		responseTimesCh: make(chan domain.ResponseTimeEntry, 1000),
-		slowRequestsCh:  make(chan domain.SlowRequest, 100),
+		validationsCh:   make(chan domain.URLValidation, resultBufferSize),
+		errorsCh:        make(chan domain.ErrorInfo, resultBufferSize),
+		responseTimesCh: make(chan domain.ResponseTimeEntry, resultBufferSize),
+		slowRequestsCh:  make(chan domain.SlowRequest, slowBufferSize),
 	}, nil
 }
 
@@ -161,53 +190,57 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 	close(t.slowRequestsCh)
 	aggregatorWg.Wait()
 
+	// Check for dropped URLs and warn user
+	if droppedCount := t.crawler.GetDroppedCount(); droppedCount > 0 {
+		t.logger.Warn("URLs dropped due to queue overflow",
+			"dropped_count", droppedCount,
+			"hint", "Consider increasing --queue-size")
+	}
+
 	// Calculate final results
 	t.calculateResults(time.Since(startTime))
 
 	return t.results, nil
 }
 
-// aggregator collects results from workers via channels (lock-free)
+// aggregator collects results from workers via channels (lock-free).
+// Uses nil channel pattern: closed channels are set to nil to disable their select cases.
 func (t *Tester) aggregator(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// Track which channels are still open
-	validationsClosed := false
-	errorsClosed := false
-	responseTimesClosed := false
-	slowRequestsClosed := false
+	// Local channel references - set to nil when closed to disable select case
+	validationsCh := t.validationsCh
+	errorsCh := t.errorsCh
+	responseTimesCh := t.responseTimesCh
+	slowRequestsCh := t.slowRequestsCh
 
-	for {
-		// Exit when all channels are closed
-		if validationsClosed && errorsClosed && responseTimesClosed && slowRequestsClosed {
-			return
-		}
-
+	// Continue while any channel is still open
+	for validationsCh != nil || errorsCh != nil || responseTimesCh != nil || slowRequestsCh != nil {
 		select {
-		case validation, ok := <-t.validationsCh:
+		case validation, ok := <-validationsCh:
 			if !ok {
-				validationsClosed = true
+				validationsCh = nil
 				continue
 			}
 			t.results.URLValidations = append(t.results.URLValidations, validation)
 
-		case errInfo, ok := <-t.errorsCh:
+		case errInfo, ok := <-errorsCh:
 			if !ok {
-				errorsClosed = true
+				errorsCh = nil
 				continue
 			}
 			t.results.Errors = append(t.results.Errors, errInfo)
 
-		case responseTime, ok := <-t.responseTimesCh:
+		case responseTime, ok := <-responseTimesCh:
 			if !ok {
-				responseTimesClosed = true
+				responseTimesCh = nil
 				continue
 			}
 			t.results.ResponseTimes = append(t.results.ResponseTimes, responseTime)
 
-		case slowReq, ok := <-t.slowRequestsCh:
+		case slowReq, ok := <-slowRequestsCh:
 			if !ok {
-				slowRequestsClosed = true
+				slowRequestsCh = nil
 				continue
 			}
 			t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
@@ -242,6 +275,8 @@ func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 		t.logger.Debug("Error creating request in dry-run",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", err)
+		atomic.AddInt64(&t.results.FailedRequests, 1)
+		t.recordError(task.URL, fmt.Sprintf("creating request: %v", err), task.Depth)
 		return
 	}
 
@@ -254,6 +289,8 @@ func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 		t.logger.Debug("Error applying authentication in dry-run",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", err)
+		atomic.AddInt64(&t.results.FailedRequests, 1)
+		t.recordError(task.URL, fmt.Sprintf("applying auth: %v", err), task.Depth)
 		return
 	}
 
@@ -263,6 +300,8 @@ func (t *Tester) processDryRun(ctx context.Context, task domain.URLTask) {
 		t.logger.Debug("Error making request in dry-run",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", err)
+		atomic.AddInt64(&t.results.FailedRequests, 1)
+		t.recordError(task.URL, fmt.Sprintf("request failed: %v", err), task.Depth)
 		return
 	}
 	defer func() {
@@ -347,8 +386,8 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 	// Discover links if configured
 	validation.LinksFound = t.discoverLinksFromResponse(resp, task)
 
-	// Record slow requests (>2 seconds)
-	if responseTime > 2*time.Second {
+	// Record slow requests exceeding threshold
+	if responseTime > defaultSlowRequestThreshold {
 		t.recordSlowRequest(task.URL, responseTime, resp.StatusCode)
 	}
 
@@ -363,7 +402,8 @@ func (t *Tester) processURL(ctx context.Context, task domain.URLTask) {
 		"links_found", validation.LinksFound)
 }
 
-// makeHTTPRequestWithRetry wraps makeHTTPRequest with exponential backoff retry for 429 responses
+// makeHTTPRequestWithRetry wraps makeHTTPRequest with exponential backoff retry for 429 responses.
+// Returns the actual request duration (excluding backoff time) for accurate latency metrics.
 func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*http.Response, time.Duration, error) {
 	const (
 		maxRetries     = 4 // Max retry attempts for 429
@@ -371,21 +411,23 @@ func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*htt
 		maxBackoff     = 30 * time.Second
 	)
 
-	var totalDuration time.Duration
+	// Track actual request time separately from backoff time
+	// Only request time is used for latency metrics
+	var lastRequestDuration time.Duration
 	backoff := initialBackoff
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		resp, duration, err := t.makeHTTPRequest(ctx, url)
-		totalDuration += duration
+		lastRequestDuration = duration
 
 		// If request failed (network error, etc), return error immediately
 		if err != nil {
-			return nil, totalDuration, err
+			return nil, lastRequestDuration, err
 		}
 
 		// If not 429 or Respect429 is disabled, return response
 		if resp.StatusCode != http.StatusTooManyRequests || !t.config.Respect429 {
-			return resp, totalDuration, nil
+			return resp, lastRequestDuration, nil
 		}
 
 		// Close the 429 response body before retrying
@@ -409,7 +451,7 @@ func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*htt
 		case <-time.After(backoff):
 			// Continue to next attempt
 		case <-ctx.Done():
-			return nil, totalDuration, ctx.Err()
+			return nil, lastRequestDuration, ctx.Err()
 		}
 
 		// Exponential backoff: double each time, cap at maxBackoff
@@ -420,7 +462,7 @@ func (t *Tester) makeHTTPRequestWithRetry(ctx context.Context, url string) (*htt
 	}
 
 	// Should never reach here, but return error just in case
-	return nil, totalDuration, fmt.Errorf("exceeded max retries for 429")
+	return nil, lastRequestDuration, fmt.Errorf("exceeded max retries for 429")
 }
 
 // makeHTTPRequest creates and executes an HTTP request, returning the response and duration
@@ -466,7 +508,7 @@ func (t *Tester) applyAuthentication(req *http.Request) error {
 		// Basic authentication: username:password
 		if auth.Username != "" {
 			req.SetBasicAuth(auth.Username, auth.Password)
-			t.logger.Debug("Applied basic authentication", "username", auth.Username)
+			t.logger.Debug("Applied basic authentication")
 		}
 
 	case "bearer":
@@ -529,10 +571,23 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 		return 0
 	}
 
-	// Limit body reading to 64KB for link extraction
-	limitedReader := io.LimitReader(resp.Body, 64*1024)
+	// Check Content-Length before reading body
+	maxSize := t.config.MaxResponseSize
+	if maxSize == 0 {
+		maxSize = 10 * 1024 * 1024 // Default 10MB
+	}
+	if resp.ContentLength > maxSize {
+		t.logger.Debug("Skipping link extraction: response too large",
+			"url", util.SanitizeURLDefault(task.URL),
+			"content_length", resp.ContentLength,
+			"max_size", maxSize)
+		return 0
+	}
+
+	// Limit body reading for link extraction (smaller than MaxResponseSize)
+	limitedReader := io.LimitReader(resp.Body, linkExtractionLimit)
 	body, readErr := io.ReadAll(limitedReader)
-	if readErr != nil && readErr != io.EOF {
+	if readErr != nil && !errors.Is(readErr, io.EOF) {
 		t.logger.Debug("Error reading response body for link extraction",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", readErr)
@@ -542,7 +597,8 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 	// Extract and queue links
 	links := t.crawler.ExtractLinks(string(body))
 	for _, link := range links {
-		if t.crawler.AddURL(link, task.Depth+1, t.urlQueue) {
+		result := t.crawler.AddURL(link, task.Depth+1, t.urlQueue)
+		if result.Added {
 			t.results.URLsDiscovered = t.crawler.GetDiscoveredCount()
 		}
 	}
@@ -550,11 +606,16 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 	return len(links)
 }
 
-// recordError records an error encountered during testing
+// recordError records an error encountered during testing.
+// Error messages are sanitized to hide internal infrastructure details
+// unless verbose mode is enabled.
 func (t *Tester) recordError(url, errMsg string, depth int) {
+	// Sanitize error message to hide internal details unless verbose
+	sanitizedErr := util.SanitizeErrorForDisplay(errMsg, t.config.Verbose)
+
 	errorInfo := domain.ErrorInfo{
 		URL:       url,
-		Error:     errMsg,
+		Error:     sanitizedErr,
 		Timestamp: time.Now(),
 		Depth:     depth,
 	}

@@ -360,6 +360,7 @@ func TestValidateResults_TargetCount(t *testing.T) {
 }
 
 func TestPrintValidationReport(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	targets := domain.PerformanceTargets{
 		RequestsPerSecond: 100,
 		AvgResponseTimeMs: 50,
@@ -369,16 +370,13 @@ func TestPrintValidationReport(t *testing.T) {
 		ErrorRate:         5.0,
 	}
 	v := New(targets)
-
 	results := testutil.SampleResults()
 	v.ValidateResults(results)
-
-	// PrintValidationReport outputs to stdout
-	// Just verify it doesn't panic
 	v.PrintValidationReport()
 }
 
 func TestPrintValidationReport_AllPassing(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	targets := domain.PerformanceTargets{
 		RequestsPerSecond: 10,  // Low target
 		AvgResponseTimeMs: 500, // High target
@@ -388,33 +386,29 @@ func TestPrintValidationReport_AllPassing(t *testing.T) {
 		ErrorRate:         20.0,
 	}
 	v := New(targets)
-
 	results := testutil.SampleResults()
 	v.ValidateResults(results)
-
-	// Should print "ALL PERFORMANCE TARGETS MET"
 	v.PrintValidationReport()
 }
 
 func TestPrintValidationReport_MostPassing(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	targets := domain.PerformanceTargets{
-		RequestsPerSecond: 50,  // Some pass
-		AvgResponseTimeMs: 100, // Some fail
+		RequestsPerSecond: 50,
+		AvgResponseTimeMs: 100,
 		P95ResponseTimeMs: 200,
 		P99ResponseTimeMs: 400,
 		SuccessRate:       95.0,
 		ErrorRate:         5.0,
 	}
 	v := New(targets)
-
 	results := testutil.SampleResults()
 	v.ValidateResults(results)
-
-	// Should print "Most targets met"
 	v.PrintValidationReport()
 }
 
 func TestPrintValidationReport_WithComparison(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	targets := domain.PerformanceTargets{
 		RequestsPerSecond: 100,
 		AvgResponseTimeMs: 50,
@@ -433,6 +427,7 @@ func TestPrintValidationReport_WithComparison(t *testing.T) {
 }
 
 func TestPrintCompetitiveAnalysis_BothPassing(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	targets := domain.PerformanceTargets{
 		RequestsPerSecond: 10, // Easy targets
 		AvgResponseTimeMs: 500,
@@ -451,6 +446,7 @@ func TestPrintCompetitiveAnalysis_BothPassing(t *testing.T) {
 }
 
 func TestPrintCompetitiveAnalysis_BothFailing(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	targets := domain.PerformanceTargets{
 		RequestsPerSecond: 1000, // Very high targets
 		AvgResponseTimeMs: 1,

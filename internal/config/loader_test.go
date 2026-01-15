@@ -190,6 +190,9 @@ func TestMergeWithDefaults_EmptyConfig(t *testing.T) {
 	if merged.UserAgent != defaults.UserAgent {
 		t.Errorf("Expected merged UserAgent '%s', got '%s'", defaults.UserAgent, merged.UserAgent)
 	}
+	if merged.QueueSize != defaults.QueueSize {
+		t.Errorf("Expected merged QueueSize %d, got %d", defaults.QueueSize, merged.QueueSize)
+	}
 }
 
 func TestMergeWithDefaults_PartialConfig(t *testing.T) {
@@ -260,5 +263,192 @@ func TestMergeWithDefaults_FullConfig(t *testing.T) {
 	}
 	if merged.PerformanceTargets.RequestsPerSecond != 300 {
 		t.Errorf("Custom RequestsPerSecond not preserved")
+	}
+}
+
+func TestLoadFromFile_EnvVarSubstitution(t *testing.T) {
+	// Set test environment variables
+	t.Setenv("TEST_BASE_URL", "http://env-test.com")
+	t.Setenv("TEST_PASSWORD", "secret123")
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "env-config.json")
+
+	configJSON := `{
+		"base_url": "${TEST_BASE_URL}",
+		"concurrency": 5,
+		"duration": "1m",
+		"auth": {
+			"type": "basic",
+			"username": "admin",
+			"password": "${TEST_PASSWORD}"
+		}
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	loader := NewLoader()
+	config, err := loader.LoadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile() returned error: %v", err)
+	}
+
+	if config.BaseURL != "http://env-test.com" {
+		t.Errorf("Expected BaseURL 'http://env-test.com', got '%s'", config.BaseURL)
+	}
+	if config.Auth == nil || config.Auth.Password != "secret123" {
+		t.Errorf("Expected Auth.Password 'secret123', got '%v'", config.Auth)
+	}
+}
+
+func TestLoadFromFile_EnvVarWithDefault(t *testing.T) {
+	// Don't set MISSING_VAR - it should use the default
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "default-config.json")
+
+	configJSON := `{
+		"base_url": "${MISSING_VAR:-http://default.com}",
+		"concurrency": 5,
+		"duration": "1m"
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	loader := NewLoader()
+	config, err := loader.LoadFromFile(configPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile() returned error: %v", err)
+	}
+
+	if config.BaseURL != "http://default.com" {
+		t.Errorf("Expected BaseURL 'http://default.com' (default), got '%s'", config.BaseURL)
+	}
+}
+
+func TestLoadFromFile_MissingRequiredEnvVar(t *testing.T) {
+	// Don't set REQUIRED_VAR - should cause an error
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "missing-config.json")
+
+	configJSON := `{
+		"base_url": "${REQUIRED_VAR_THAT_DOES_NOT_EXIST}",
+		"concurrency": 5,
+		"duration": "1m"
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	loader := NewLoader()
+	_, err = loader.LoadFromFile(configPath)
+	if err == nil {
+		t.Error("Expected error for missing required env var, got nil")
+	}
+}
+
+func TestSubstituteEnvVars_MultipleVars(t *testing.T) {
+	t.Setenv("VAR_A", "valueA")
+	t.Setenv("VAR_B", "valueB")
+
+	input := `{"a": "${VAR_A}", "b": "${VAR_B}"}`
+	result, err := substituteEnvVars(input)
+	if err != nil {
+		t.Fatalf("substituteEnvVars() returned error: %v", err)
+	}
+
+	expected := `{"a": "valueA", "b": "valueB"}`
+	if result != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, result)
+	}
+}
+
+func TestSubstituteEnvVars_NoVars(t *testing.T) {
+	input := `{"base_url": "http://example.com"}`
+	result, err := substituteEnvVars(input)
+	if err != nil {
+		t.Fatalf("substituteEnvVars() returned error: %v", err)
+	}
+
+	if result != input {
+		t.Errorf("Expected unchanged input, got '%s'", result)
+	}
+}
+
+func TestMergeString(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		fallback string
+		expected string
+	}{
+		{"empty value uses fallback", "", "fallback", "fallback"},
+		{"non-empty value preserved", "value", "fallback", "value"},
+		{"both empty returns empty", "", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeString(tt.value, tt.fallback)
+			if result != tt.expected {
+				t.Errorf("mergeString(%q, %q) = %q, want %q",
+					tt.value, tt.fallback, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMergeInt(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    int
+		fallback int
+		expected int
+	}{
+		{"zero value uses fallback", 0, 10, 10},
+		{"non-zero value preserved", 5, 10, 5},
+		{"both zero returns zero", 0, 0, 0},
+		{"negative value preserved", -5, 10, -5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeInt(tt.value, tt.fallback)
+			if result != tt.expected {
+				t.Errorf("mergeInt(%d, %d) = %d, want %d",
+					tt.value, tt.fallback, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMergeFloat64(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    float64
+		fallback float64
+		expected float64
+	}{
+		{"zero value uses fallback", 0, 10.5, 10.5},
+		{"non-zero value preserved", 5.5, 10.5, 5.5},
+		{"both zero returns zero", 0, 0, 0},
+		{"negative value preserved", -5.5, 10.5, -5.5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeFloat64(tt.value, tt.fallback)
+			if result != tt.expected {
+				t.Errorf("mergeFloat64(%f, %f) = %f, want %f",
+					tt.value, tt.fallback, result, tt.expected)
+			}
+		})
 	}
 }

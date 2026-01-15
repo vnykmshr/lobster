@@ -152,9 +152,12 @@ func TestAddURL_SameDomain(t *testing.T) {
 	c, _ := New("http://example.com", 3)
 	urlQueue := make(chan domain.URLTask, 10)
 
-	added := c.AddURL("http://example.com/page1", 1, urlQueue)
-	if !added {
-		t.Error("Expected URL to be added")
+	result := c.AddURL("http://example.com/page1", 1, urlQueue)
+	if !result.Added {
+		t.Errorf("Expected URL to be added, got reason: %s", result.Reason)
+	}
+	if result.Reason != domain.AddURLSuccess {
+		t.Errorf("Expected reason %s, got %s", domain.AddURLSuccess, result.Reason)
 	}
 
 	if len(urlQueue) != 1 {
@@ -174,9 +177,12 @@ func TestAddURL_DifferentDomain(t *testing.T) {
 	c, _ := New("http://example.com", 3)
 	urlQueue := make(chan domain.URLTask, 10)
 
-	added := c.AddURL("http://different.com/page", 1, urlQueue)
-	if added {
+	result := c.AddURL("http://different.com/page", 1, urlQueue)
+	if result.Added {
 		t.Error("Expected URL from different domain to be rejected")
+	}
+	if result.Reason != domain.AddURLInvalidHost {
+		t.Errorf("Expected reason %s, got %s", domain.AddURLInvalidHost, result.Reason)
 	}
 
 	if len(urlQueue) != 0 {
@@ -188,9 +194,9 @@ func TestAddURL_RelativeURL(t *testing.T) {
 	c, _ := New("http://example.com", 3)
 	urlQueue := make(chan domain.URLTask, 10)
 
-	added := c.AddURL("/page2", 1, urlQueue)
-	if !added {
-		t.Error("Expected relative URL to be added")
+	result := c.AddURL("/page2", 1, urlQueue)
+	if !result.Added {
+		t.Errorf("Expected relative URL to be added, got reason: %s", result.Reason)
 	}
 
 	task := <-urlQueue
@@ -205,14 +211,17 @@ func TestAddURL_Deduplication(t *testing.T) {
 	urlQueue := make(chan domain.URLTask, 10)
 
 	// Add same URL twice
-	added1 := c.AddURL("http://example.com/page", 1, urlQueue)
-	added2 := c.AddURL("http://example.com/page", 1, urlQueue)
+	result1 := c.AddURL("http://example.com/page", 1, urlQueue)
+	result2 := c.AddURL("http://example.com/page", 1, urlQueue)
 
-	if !added1 {
-		t.Error("Expected first URL to be added")
+	if !result1.Added {
+		t.Errorf("Expected first URL to be added, got reason: %s", result1.Reason)
 	}
-	if added2 {
+	if result2.Added {
 		t.Error("Expected duplicate URL to be rejected")
+	}
+	if result2.Reason != domain.AddURLDuplicate {
+		t.Errorf("Expected reason %s, got %s", domain.AddURLDuplicate, result2.Reason)
 	}
 
 	if len(urlQueue) != 1 {
@@ -225,14 +234,17 @@ func TestAddURL_FragmentRemoval(t *testing.T) {
 	urlQueue := make(chan domain.URLTask, 10)
 
 	// Add URLs with fragments - they should be treated as the same URL
-	added1 := c.AddURL("http://example.com/page#section1", 1, urlQueue)
-	added2 := c.AddURL("http://example.com/page#section2", 1, urlQueue)
+	result1 := c.AddURL("http://example.com/page#section1", 1, urlQueue)
+	result2 := c.AddURL("http://example.com/page#section2", 1, urlQueue)
 
-	if !added1 {
-		t.Error("Expected first URL to be added")
+	if !result1.Added {
+		t.Errorf("Expected first URL to be added, got reason: %s", result1.Reason)
 	}
-	if added2 {
+	if result2.Added {
 		t.Error("Expected URL with different fragment to be deduplicated")
+	}
+	if result2.Reason != domain.AddURLDuplicate {
+		t.Errorf("Expected reason %s, got %s", domain.AddURLDuplicate, result2.Reason)
 	}
 
 	task := <-urlQueue
@@ -247,9 +259,12 @@ func TestAddURL_MaxDepthExceeded(t *testing.T) {
 	urlQueue := make(chan domain.URLTask, 10)
 
 	// Try to add URL at depth 3 (exceeds maxDepth)
-	added := c.AddURL("http://example.com/page", 3, urlQueue)
-	if added {
+	result := c.AddURL("http://example.com/page", 3, urlQueue)
+	if result.Added {
 		t.Error("Expected URL exceeding max depth to be rejected")
+	}
+	if result.Reason != domain.AddURLDepthExceeded {
+		t.Errorf("Expected reason %s, got %s", domain.AddURLDepthExceeded, result.Reason)
 	}
 
 	if len(urlQueue) != 0 {
@@ -273,5 +288,37 @@ func TestGetDiscoveredCount(t *testing.T) {
 	count := c.GetDiscoveredCount()
 	if count != 2 {
 		t.Errorf("Expected count 2, got %d", count)
+	}
+}
+
+func TestGetDroppedCount(t *testing.T) {
+	c, _ := New("http://example.com", 3)
+	// Create a queue with capacity of 2
+	urlQueue := make(chan domain.URLTask, 2)
+
+	// Initial dropped count should be 0
+	if dropped := c.GetDroppedCount(); dropped != 0 {
+		t.Errorf("Expected initial dropped count 0, got %d", dropped)
+	}
+
+	// Fill the queue
+	c.AddURL("http://example.com/page1", 1, urlQueue)
+	c.AddURL("http://example.com/page2", 1, urlQueue)
+
+	// Queue is full - this should be dropped
+	c.AddURL("http://example.com/page3", 1, urlQueue)
+	c.AddURL("http://example.com/page4", 1, urlQueue)
+
+	// Should have 2 dropped URLs
+	droppedCount := c.GetDroppedCount()
+	if droppedCount != 2 {
+		t.Errorf("Expected dropped count 2, got %d", droppedCount)
+	}
+
+	// Discovered count should still include all unique URLs
+	// (they were seen even if not queued)
+	discoveredCount := c.GetDiscoveredCount()
+	if discoveredCount != 4 {
+		t.Errorf("Expected discovered count 4, got %d", discoveredCount)
 	}
 }

@@ -37,10 +37,16 @@ go build -o lobster cmd/lobster/main.go
 
 ### Basic Usage
 
+Test a public website:
+
+```bash
+lobster -url https://example.com -duration 30s
+```
+
 Test your local application:
 
 ```bash
-lobster -url http://localhost:3000
+lobster -url http://localhost:3000 -allow-private-ips
 ```
 
 Lobster crawls your app, tests all discovered URLs under load, and generates reports.
@@ -90,13 +96,15 @@ Lobster follows **Clean Architecture** principles:
 lobster/
 ├── cmd/lobster/       # CLI entry point
 ├── internal/
-│   ├── domain/         # Core entities
+│   ├── cli/            # CLI utilities
+│   ├── config/         # Configuration loading
 │   ├── crawler/        # URL discovery
-│   ├── tester/         # Load testing engine
+│   ├── domain/         # Core entities
 │   ├── reporter/       # Report generation
-│   ├── validator/      # Performance validation
-│   ├── config/         # Configuration
-│   └── testutil/       # Shared test helpers
+│   ├── robots/         # robots.txt parsing
+│   ├── tester/         # Load testing engine
+│   ├── util/           # Shared utilities
+│   └── validator/      # Performance validation
 ├── docs/               # Documentation
 └── examples/           # Example configs
 ```

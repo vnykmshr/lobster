@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/vnykmshr/lobster/internal/domain"
 )
@@ -17,6 +18,8 @@ type Crawler struct {
 	baseURL        *url.URL
 	urlPattern     *regexp.Regexp
 	maxDepth       int
+	discoveredCnt  atomic.Int64 // O(1) counter for discovered URLs
+	droppedCnt     atomic.Int64 // Counter for URLs dropped due to queue full
 }
 
 // New creates a new crawler
@@ -69,11 +72,11 @@ func (c *Crawler) isValidLink(link string) bool {
 }
 
 // AddURL adds a URL to the discovery queue if it's valid and not already discovered
-func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan domain.URLTask) bool {
+func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTask) domain.AddURLResult {
 	// Parse and validate URL
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLParseError}
 	}
 
 	// Make relative URLs absolute
@@ -83,7 +86,7 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan domain.URLTask)
 
 	// Only process URLs from the same host
 	if parsedURL.Host != c.baseURL.Host {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLInvalidHost}
 	}
 
 	// Clean URL (remove fragment, normalize)
@@ -92,30 +95,34 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan domain.URLTask)
 
 	// Check if already discovered
 	if _, exists := c.discoveredURLs.LoadOrStore(cleanURL, true); exists {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLDuplicate}
 	}
+
+	// Track discovered URL count (O(1) instead of iterating sync.Map)
+	c.discoveredCnt.Add(1)
 
 	// Check depth limit
 	if depth > c.maxDepth {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLDepthExceeded}
 	}
 
 	// Add to queue
 	select {
 	case urlQueue <- domain.URLTask{URL: cleanURL, Depth: depth}:
-		return true
+		return domain.AddURLResult{Added: true, Reason: domain.AddURLSuccess}
 	default:
-		// Queue full, skip
-		return false
+		// Queue full - track dropped URLs for visibility
+		c.droppedCnt.Add(1)
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLQueueFull}
 	}
 }
 
-// GetDiscoveredCount returns the number of discovered URLs
+// GetDiscoveredCount returns the number of discovered URLs (O(1) operation)
 func (c *Crawler) GetDiscoveredCount() int {
-	count := 0
-	c.discoveredURLs.Range(func(_, _ interface{}) bool {
-		count++
-		return true
-	})
-	return count
+	return int(c.discoveredCnt.Load())
+}
+
+// GetDroppedCount returns the number of URLs dropped due to queue full
+func (c *Crawler) GetDroppedCount() int {
+	return int(c.droppedCnt.Load())
 }

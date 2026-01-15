@@ -203,7 +203,7 @@ func TestMakeHTTPRequest_Success(t *testing.T) {
 
 func TestMakeHTTPRequest_ContextCanceled(t *testing.T) {
 	// Create server that never responds
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		time.Sleep(10 * time.Second)
 	}))
 	defer server.Close()
@@ -236,7 +236,7 @@ func TestDiscoverLinksFromResponse_HTML(t *testing.T) {
 		</html>
 	`
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte(htmlContent))
 	}))
@@ -271,15 +271,19 @@ func TestDiscoverLinksFromResponse_HTML(t *testing.T) {
 	}
 }
 
-func TestDiscoverLinksFromResponse_NotHTML(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"key": "value"}`))
+// testDiscoverLinksScenario is a helper for testing discoverLinksFromResponse scenarios.
+func testDiscoverLinksScenario(t *testing.T, contentType, body string, followLinks bool, maxDepth, taskDepth, expectedLinks int) {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", contentType)
+		_, _ = w.Write([]byte(body))
 	}))
 	defer server.Close()
 
 	config := testConfig(server.URL)
-	config.FollowLinks = true
+	config.FollowLinks = followLinks
+	config.MaxDepth = maxDepth
 	logger := testLogger()
 
 	tester, err := New(config, logger)
@@ -293,79 +297,29 @@ func TestDiscoverLinksFromResponse_NotHTML(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	task := domain.URLTask{URL: server.URL, Depth: 0}
+	task := domain.URLTask{URL: server.URL, Depth: taskDepth}
 	linksFound := tester.discoverLinksFromResponse(resp, task)
 
-	if linksFound != 0 {
-		t.Errorf("Expected 0 links from non-HTML response, got %d", linksFound)
+	if linksFound != expectedLinks {
+		t.Errorf("Expected %d links, got %d", expectedLinks, linksFound)
 	}
+}
+
+func TestDiscoverLinksFromResponse_NotHTML(t *testing.T) {
+	testDiscoverLinksScenario(t, "application/json", `{"key": "value"}`, true, 5, 0, 0)
 }
 
 func TestDiscoverLinksFromResponse_MaxDepthReached(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(`<a href="/page">Link</a>`))
-	}))
-	defer server.Close()
-
-	config := testConfig(server.URL)
-	config.FollowLinks = true
-	config.MaxDepth = 2
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	resp, err := http.Get(server.URL)
-	if err != nil {
-		t.Fatalf("Failed to get test page: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	// Task at max depth
-	task := domain.URLTask{URL: server.URL, Depth: 2}
-	linksFound := tester.discoverLinksFromResponse(resp, task)
-
-	if linksFound != 0 {
-		t.Errorf("Expected 0 links when max depth reached, got %d", linksFound)
-	}
+	testDiscoverLinksScenario(t, "text/html", `<a href="/page">Link</a>`, true, 2, 2, 0)
 }
 
 func TestDiscoverLinksFromResponse_FollowLinksDisabled(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(`<a href="/page">Link</a>`))
-	}))
-	defer server.Close()
-
-	config := testConfig(server.URL)
-	config.FollowLinks = false // Disabled
-	logger := testLogger()
-
-	tester, err := New(config, logger)
-	if err != nil {
-		t.Fatalf("Failed to create tester: %v", err)
-	}
-
-	resp, err := http.Get(server.URL)
-	if err != nil {
-		t.Fatalf("Failed to get test page: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	task := domain.URLTask{URL: server.URL, Depth: 0}
-	linksFound := tester.discoverLinksFromResponse(resp, task)
-
-	if linksFound != 0 {
-		t.Errorf("Expected 0 links when FollowLinks disabled, got %d", linksFound)
-	}
+	testDiscoverLinksScenario(t, "text/html", `<a href="/page">Link</a>`, false, 5, 0, 0)
 }
 
 func TestRun_BasicWorkflow(t *testing.T) {
 	requestCount := int32(0)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK"))
@@ -418,7 +372,7 @@ func TestRun_BasicWorkflow(t *testing.T) {
 
 func TestRun_ErrorHandling(t *testing.T) {
 	// Server that always returns 500
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
@@ -465,7 +419,7 @@ func TestRun_SlowRequests(t *testing.T) {
 	}
 
 	// Create a test server that responds slowly
-	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(2100 * time.Millisecond) // Just over 2 seconds
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("<html><body>Slow response</body></html>"))
@@ -671,7 +625,7 @@ func TestRecordError(t *testing.T) {
 
 func TestRun_ConcurrentWorkers(t *testing.T) {
 	requestCount := int32(0)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt32(&requestCount, 1)
 		// Small delay to ensure concurrent execution
 		time.Sleep(50 * time.Millisecond)
@@ -1006,7 +960,7 @@ func TestMakeHTTPRequestWithRetry_429Backoff(t *testing.T) {
 	retryTimes := []time.Time{}
 	var mu sync.Mutex
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		count := atomic.AddInt64(&requestCount, 1)
 		mu.Lock()
 		retryTimes = append(retryTimes, time.Now())
@@ -1064,24 +1018,28 @@ func TestMakeHTTPRequestWithRetry_429Backoff(t *testing.T) {
 	}
 }
 
-// TestMakeHTTPRequestWithRetry_429MaxRetries tests that max retries is enforced
-func TestMakeHTTPRequestWithRetry_429MaxRetries(t *testing.T) {
+// create429Server creates a test server that always returns HTTP 429.
+// Returns the server and a function to get the request count.
+func create429Server() (*httptest.Server, func() int64) {
 	var requestCount int64
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		atomic.AddInt64(&requestCount, 1)
-		// Always return 429
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte("Too Many Requests"))
 	}))
+	return server, func() int64 { return atomic.LoadInt64(&requestCount) }
+}
+
+// TestMakeHTTPRequestWithRetry_429MaxRetries tests that max retries is enforced
+func TestMakeHTTPRequestWithRetry_429MaxRetries(t *testing.T) {
+	server, getCount := create429Server()
 	defer server.Close()
 
 	config := testConfig(server.URL)
 	config.Respect429 = true
 	config.NoProgress = true
-	logger := testLogger()
 
-	tester, err := New(config, logger)
+	tester, err := New(config, testLogger())
 	if err != nil {
 		t.Fatalf("Failed to create tester: %v", err)
 	}
@@ -1096,12 +1054,10 @@ func TestMakeHTTPRequestWithRetry_429MaxRetries(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 
 	// Should have made 5 attempts (initial + 4 retries) + 1 final request
-	count := atomic.LoadInt64(&requestCount)
-	if count != 6 {
+	if count := getCount(); count != 6 {
 		t.Errorf("Expected 6 requests (5 attempts + 1 final), got %d", count)
 	}
 
-	// Final response should still be 429
 	if resp.StatusCode != http.StatusTooManyRequests {
 		t.Errorf("Expected final status 429, got %d", resp.StatusCode)
 	}
@@ -1109,21 +1065,14 @@ func TestMakeHTTPRequestWithRetry_429MaxRetries(t *testing.T) {
 
 // TestMakeHTTPRequestWithRetry_ContextCancellation tests context cancellation during retry backoff
 func TestMakeHTTPRequestWithRetry_ContextCancellation(t *testing.T) {
-	var requestCount int64
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		w.WriteHeader(http.StatusTooManyRequests)
-		_, _ = w.Write([]byte("Too Many Requests"))
-	}))
+	server, getCount := create429Server()
 	defer server.Close()
 
 	config := testConfig(server.URL)
 	config.Respect429 = true
 	config.NoProgress = true
-	logger := testLogger()
 
-	tester, err := New(config, logger)
+	tester, err := New(config, testLogger())
 	if err != nil {
 		t.Fatalf("Failed to create tester: %v", err)
 	}
@@ -1142,29 +1091,21 @@ func TestMakeHTTPRequestWithRetry_ContextCancellation(t *testing.T) {
 	}
 
 	// Should have made at least one request before context cancellation
-	count := atomic.LoadInt64(&requestCount)
-	if count < 1 {
+	if count := getCount(); count < 1 {
 		t.Errorf("Expected at least 1 request before cancellation, got %d", count)
 	}
 }
 
 // TestMakeHTTPRequestWithRetry_Respect429Disabled tests that 429 retry is skipped when disabled
 func TestMakeHTTPRequestWithRetry_Respect429Disabled(t *testing.T) {
-	var requestCount int64
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&requestCount, 1)
-		w.WriteHeader(http.StatusTooManyRequests)
-		_, _ = w.Write([]byte("Too Many Requests"))
-	}))
+	server, getCount := create429Server()
 	defer server.Close()
 
 	config := testConfig(server.URL)
 	config.Respect429 = false // Disable 429 retry
 	config.NoProgress = true
-	logger := testLogger()
 
-	tester, err := New(config, logger)
+	tester, err := New(config, testLogger())
 	if err != nil {
 		t.Fatalf("Failed to create tester: %v", err)
 	}
@@ -1179,13 +1120,354 @@ func TestMakeHTTPRequestWithRetry_Respect429Disabled(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 
 	// Should only make 1 request (no retries)
-	count := atomic.LoadInt64(&requestCount)
-	if count != 1 {
+	if count := getCount(); count != 1 {
 		t.Errorf("Expected exactly 1 request with Respect429=false, got %d", count)
 	}
 
-	// Status should be 429 (no retry)
 	if resp.StatusCode != http.StatusTooManyRequests {
 		t.Errorf("Expected status 429, got %d", resp.StatusCode)
+	}
+}
+
+// Tests for processDryRun (Task 4.1)
+
+// drainChannels collects results from tester channels into results struct.
+// Must be called after processDryRun to aggregate sent data.
+// Closes channels and drains synchronously to avoid race conditions.
+func drainChannels(tester *Tester) {
+	// Close channels to signal no more data will be sent
+	close(tester.validationsCh)
+	close(tester.errorsCh)
+	close(tester.responseTimesCh)
+	close(tester.slowRequestsCh)
+
+	// Drain channels synchronously (no goroutine = no race)
+	for v := range tester.validationsCh {
+		tester.results.URLValidations = append(tester.results.URLValidations, v)
+	}
+	for e := range tester.errorsCh {
+		tester.results.Errors = append(tester.results.Errors, e)
+	}
+	//nolint:revive // Drain remaining channels to prevent goroutine leaks
+	for range tester.responseTimesCh {
+	}
+	//nolint:revive // Drain remaining channels to prevent goroutine leaks
+	for range tester.slowRequestsCh {
+	}
+}
+
+func TestProcessDryRun_URLDiscovery(t *testing.T) {
+	// Server that returns HTML with links
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`
+			<html><body>
+				<a href="/page1">Page 1</a>
+				<a href="/page2">Page 2</a>
+			</body></html>
+		`))
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	config.FollowLinks = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	// Call processDryRun directly
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify TotalRequests incremented
+	if tester.results.TotalRequests != 1 {
+		t.Errorf("Expected TotalRequests=1, got %d", tester.results.TotalRequests)
+	}
+
+	// Verify no failed requests
+	if tester.results.FailedRequests != 0 {
+		t.Errorf("Expected FailedRequests=0, got %d", tester.results.FailedRequests)
+	}
+
+	// Verify validation was recorded
+	if len(tester.results.URLValidations) != 1 {
+		t.Fatalf("Expected 1 validation, got %d", len(tester.results.URLValidations))
+	}
+
+	validation := tester.results.URLValidations[0]
+	if validation.StatusCode != 200 {
+		t.Errorf("Expected status 200, got %d", validation.StatusCode)
+	}
+}
+
+func TestProcessDryRun_AuthenticationApplied(t *testing.T) {
+	var receivedAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	config.Auth = &domain.AuthConfig{
+		Type:  "bearer",
+		Token: "test-token",
+	}
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Verify auth header was applied
+	expectedAuth := "Bearer test-token"
+	if receivedAuth != expectedAuth {
+		t.Errorf("Expected auth header %q, got %q", expectedAuth, receivedAuth)
+	}
+}
+
+func TestProcessDryRun_RequestError(t *testing.T) {
+	// Use a non-routable IP to cause connection failure
+	config := testConfig("http://192.0.2.1:12345") // TEST-NET-1, guaranteed non-routable
+	config.DryRun = true
+	config.RequestTimeout = 100 * time.Millisecond // Short timeout
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: config.BaseURL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify TotalRequests incremented
+	if tester.results.TotalRequests != 1 {
+		t.Errorf("Expected TotalRequests=1, got %d", tester.results.TotalRequests)
+	}
+
+	// Verify FailedRequests incremented
+	if tester.results.FailedRequests != 1 {
+		t.Errorf("Expected FailedRequests=1, got %d", tester.results.FailedRequests)
+	}
+
+	// Verify error was recorded
+	if len(tester.results.Errors) != 1 {
+		t.Errorf("Expected 1 error, got %d", len(tester.results.Errors))
+	}
+}
+
+func TestProcessDryRun_ContextCancellation(t *testing.T) {
+	// Server that delays response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(500 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Create context that cancels quickly
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify request failed
+	if tester.results.FailedRequests != 1 {
+		t.Errorf("Expected FailedRequests=1 after context cancellation, got %d", tester.results.FailedRequests)
+	}
+}
+
+func TestProcessDryRun_InvalidStatusCode(t *testing.T) {
+	// Server that returns 500 error
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.DryRun = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	ctx := context.Background()
+	task := domain.URLTask{URL: server.URL, Depth: 0}
+
+	tester.processDryRun(ctx, task)
+
+	// Drain channels to collect results
+	drainChannels(tester)
+
+	// Verify validation was recorded with correct status
+	if len(tester.results.URLValidations) != 1 {
+		t.Fatalf("Expected 1 validation, got %d", len(tester.results.URLValidations))
+	}
+
+	validation := tester.results.URLValidations[0]
+	if validation.StatusCode != 500 {
+		t.Errorf("Expected status 500, got %d", validation.StatusCode)
+	}
+
+	// 500 should be marked as invalid
+	if validation.IsValid {
+		t.Error("Expected 500 to be marked as invalid")
+	}
+}
+
+// Test monitor goroutine behavior
+
+func TestMonitor_NoProgressMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.NoProgress = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Create a context that cancels after a short time
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	done := make(chan struct{})
+	startTime := time.Now()
+
+	go func() {
+		tester.monitor(ctx, startTime)
+		close(done)
+	}()
+
+	// Wait for monitor to exit
+	select {
+	case <-done:
+		// Success - monitor exited
+	case <-time.After(200 * time.Millisecond):
+		t.Error("Monitor did not exit in time")
+	}
+}
+
+func TestMonitor_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.NoProgress = false // Enable progress updates
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Set some results for monitor to display
+	atomic.StoreInt64(&tester.results.TotalRequests, 10)
+	atomic.StoreInt64(&tester.results.SuccessfulRequests, 8)
+	atomic.StoreInt64(&tester.results.FailedRequests, 2)
+
+	// Create a context that cancels after enough time for at least one tick
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	done := make(chan struct{})
+	startTime := time.Now()
+
+	go func() {
+		tester.monitor(ctx, startTime)
+		close(done)
+	}()
+
+	// Wait for monitor to exit
+	select {
+	case <-done:
+		// Success - monitor exited after context cancellation
+	case <-time.After(500 * time.Millisecond):
+		t.Error("Monitor did not exit after context cancellation")
+	}
+}
+
+func TestMonitor_VerboseMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.NoProgress = false
+	config.Verbose = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Set some results for monitor to log
+	atomic.StoreInt64(&tester.results.TotalRequests, 5)
+	tester.results.URLsDiscovered = 3
+
+	// Create a short-lived context
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	done := make(chan struct{})
+	startTime := time.Now()
+
+	go func() {
+		tester.monitor(ctx, startTime)
+		close(done)
+	}()
+
+	// Wait for monitor to exit
+	select {
+	case <-done:
+		// Success - monitor exited
+	case <-time.After(500 * time.Millisecond):
+		t.Error("Monitor in verbose mode did not exit in time")
 	}
 }

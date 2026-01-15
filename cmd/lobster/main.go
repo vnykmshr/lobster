@@ -2,21 +2,20 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/vnykmshr/lobster/internal/config"
+	"github.com/vnykmshr/lobster/internal/cli"
 	"github.com/vnykmshr/lobster/internal/domain"
 	"github.com/vnykmshr/lobster/internal/reporter"
 	"github.com/vnykmshr/lobster/internal/tester"
+	"github.com/vnykmshr/lobster/internal/util"
 	"github.com/vnykmshr/lobster/internal/validator"
 )
 
@@ -39,6 +38,7 @@ func main() {
 		respect429         = flag.Bool("respect-429", true, "Respect HTTP 429 with exponential backoff")
 		dryRun             = flag.Bool("dry-run", false, "Discover URLs without making test requests")
 		insecureSkipVerify = flag.Bool("insecure-skip-verify", false, "INSECURE: Skip TLS certificate verification")
+		allowPrivateIPs    = flag.Bool("allow-private-ips", false, "Allow private/localhost IPs (for internal testing)")
 		ignoreRobots       = flag.Bool("ignore-robots", false, "Ignore robots.txt directives (use responsibly)")
 		outputFile         = flag.String("output", "", "Output file for results (JSON)")
 		verbose            = flag.Bool("verbose", false, "Verbose logging")
@@ -48,14 +48,22 @@ func main() {
 		compareAgainst     = flag.String("compare", "", "Compare against target (e.g., 'Ghost', 'WordPress')")
 
 		// Authentication flags
-		authType     = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
-		authUsername = flag.String("auth-username", "", "Username for basic authentication")
-		authPassword = flag.String("auth-password", "", "Password for basic authentication")
-		authToken    = flag.String("auth-token", "", "Bearer token for authentication")
-		authCookie   = flag.String("auth-cookie", "", "Cookie string (name=value)")
-		authHeader   = flag.String("auth-header", "", "Custom header (Name:Value)")
+		authType          = flag.String("auth-type", "", "Authentication type: basic, bearer, cookie, header")
+		authUsername      = flag.String("auth-username", "", "Username for basic authentication")
+		authPasswordStdin = flag.Bool("auth-password-stdin", false, "Read password from stdin (one line)")
+		authTokenStdin    = flag.Bool("auth-token-stdin", false, "Read bearer token from stdin (one line)")
+		authHeader        = flag.String("auth-header", "", "Custom header (Name:Value)")
 	)
 	flag.Parse()
+
+	// Setup logger early so all errors use consistent output format
+	logLevel := slog.LevelInfo
+	if *verbose {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	if *showVersion {
 		fmt.Printf("Lobster v%s\n", version)
@@ -63,108 +71,129 @@ func main() {
 	}
 
 	if *showHelp {
-		showHelpMessage()
+		cli.ShowHelpMessage(version)
 		return
 	}
 
 	// Load configuration
-	cfg, err := loadConfiguration(*configPath, &configOptions{
-		baseURL:            *baseURL,
-		concurrency:        *concurrency,
-		duration:           *duration,
-		timeout:            *timeout,
-		rate:               *rate,
-		userAgent:          *userAgent,
-		followLinks:        *followLinks,
-		maxDepth:           *maxDepth,
-		queueSize:          *queueSize,
-		respect429:         *respect429,
-		dryRun:             *dryRun,
-		insecureSkipVerify: *insecureSkipVerify,
-		ignoreRobots:       *ignoreRobots,
-		outputFile:         *outputFile,
-		verbose:            *verbose,
-		authType:           *authType,
-		authUsername:       *authUsername,
-		authPassword:       *authPassword,
-		authToken:          *authToken,
-		authCookie:         *authCookie,
-		authHeader:         *authHeader,
+	cfg, err := cli.LoadConfiguration(*configPath, &cli.ConfigOptions{
+		BaseURL:            *baseURL,
+		Concurrency:        *concurrency,
+		Duration:           *duration,
+		Timeout:            *timeout,
+		Rate:               *rate,
+		UserAgent:          *userAgent,
+		FollowLinks:        *followLinks,
+		MaxDepth:           *maxDepth,
+		QueueSize:          *queueSize,
+		Respect429:         *respect429,
+		DryRun:             *dryRun,
+		InsecureSkipVerify: *insecureSkipVerify,
+		IgnoreRobots:       *ignoreRobots,
+		OutputFile:         *outputFile,
+		Verbose:            *verbose,
+		AuthType:           *authType,
+		AuthUsername:       *authUsername,
+		AuthPasswordStdin:  *authPasswordStdin,
+		AuthTokenStdin:     *authTokenStdin,
+		AuthHeader:         *authHeader,
 	})
 	if err != nil {
-		log.Fatalf("Configuration error: %v\nCheck your config file syntax or command-line flags", err)
+		logger.Error("Configuration error",
+			"error", err,
+			"hint", "Check your config file syntax or command-line flags")
+		os.Exit(1)
 	}
 
 	// Validate and enforce rate limit safety
-	if validateErr := validateRateLimit(&cfg.Rate); validateErr != nil {
-		log.Fatalf("Invalid rate limit: %v\nUse -rate flag with a value >= 0.1", validateErr)
+	if validateErr := cli.ValidateRateLimit(&cfg.Rate); validateErr != nil {
+		logger.Error("Invalid rate limit",
+			"error", validateErr,
+			"hint", "Use -rate flag with a value >= 0.1")
+		os.Exit(1)
 	}
 
-	// Warn about insecure TLS skip verify
+	// Validate base URL (SSRF protection)
+	if validateErr := util.ValidateBaseURL(cfg.BaseURL, *allowPrivateIPs); validateErr != nil {
+		logger.Error("Invalid base URL", "error", validateErr)
+		os.Exit(1)
+	}
+
+	// Warn about allowing private IPs
+	if *allowPrivateIPs {
+		cli.PrintWarningBox("SECURITY WARNING", []string{
+			"Private/localhost IPs are ALLOWED (-allow-private-ips)",
+			"",
+			"This bypasses SSRF protection. Only use for:",
+			"  • Testing internal/local services you own",
+			"  • Development environments",
+			"",
+			"NEVER use this with untrusted URL inputs!",
+		})
+	}
+
+	// Require explicit env var confirmation for insecure TLS
 	if cfg.InsecureSkipVerify {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                        SECURITY WARNING                            ║\n")
-		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
-		fmt.Fprintf(os.Stderr, "║  TLS certificate verification is DISABLED (-insecure-skip-verify)  ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  This makes you vulnerable to man-in-the-middle attacks!          ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  Only use this for:                                                ║\n")
-		fmt.Fprintf(os.Stderr, "║    • Testing with self-signed certificates                         ║\n")
-		fmt.Fprintf(os.Stderr, "║    • Internal development environments                             ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  NEVER use this in production or with untrusted networks!         ║\n")
-		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
-		fmt.Fprintf(os.Stderr, "\n")
+		if os.Getenv("LOBSTER_INSECURE_TLS") != "true" {
+			logger.Error("Insecure TLS requires explicit confirmation",
+				"required_env", "LOBSTER_INSECURE_TLS=true",
+				"reason", "security safeguard to prevent accidental TLS bypass",
+				"implications", []string{
+					"man-in-the-middle attacks become possible",
+					"certificate validation is completely bypassed",
+					"use only for testing with self-signed certificates",
+				})
+			os.Exit(1)
+		}
+
+		// Show warning after env var check passes
+		cli.PrintWarningBox("SECURITY WARNING", []string{
+			"TLS certificate verification is DISABLED (-insecure-skip-verify)",
+			"",
+			"This makes you vulnerable to man-in-the-middle attacks!",
+			"",
+			"Only use this for:",
+			"  • Testing with self-signed certificates",
+			"  • Internal development environments",
+			"",
+			"NEVER use this in production or with untrusted networks!",
+		})
 	}
 
 	// Warn about ignoring robots.txt
 	if cfg.IgnoreRobots {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "╔════════════════════════════════════════════════════════════════════╗\n")
-		fmt.Fprintf(os.Stderr, "║                        ETHICAL WARNING                             ║\n")
-		fmt.Fprintf(os.Stderr, "╠════════════════════════════════════════════════════════════════════╣\n")
-		fmt.Fprintf(os.Stderr, "║  Ignoring robots.txt directives (-ignore-robots)                   ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  You are bypassing the website owner's crawling preferences!      ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  Only use this when:                                               ║\n")
-		fmt.Fprintf(os.Stderr, "║    • You OWN the website being tested                              ║\n")
-		fmt.Fprintf(os.Stderr, "║    • You have explicit written permission                          ║\n")
-		fmt.Fprintf(os.Stderr, "║                                                                    ║\n")
-		fmt.Fprintf(os.Stderr, "║  Unauthorized testing may violate terms of service or laws!       ║\n")
-		fmt.Fprintf(os.Stderr, "╚════════════════════════════════════════════════════════════════════╝\n")
-		fmt.Fprintf(os.Stderr, "\n")
+		cli.PrintWarningBox("ETHICAL WARNING", []string{
+			"Ignoring robots.txt directives (-ignore-robots)",
+			"",
+			"You are bypassing the website owner's crawling preferences!",
+			"",
+			"Only use this when:",
+			"  • You OWN the website being tested",
+			"  • You have explicit written permission",
+			"",
+			"Unauthorized testing may violate terms of service or laws!",
+		})
 	}
-
-	// Setup logger
-	logLevel := slog.LevelInfo
-	if cfg.Verbose {
-		logLevel = slog.LevelDebug
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
 
 	// Parse duration
 	testDuration, err := time.ParseDuration(cfg.Duration)
 	if err != nil {
-		log.Fatalf("Invalid duration format: %v\nUse format like: 30s, 5m, 1h (e.g., -duration 2m)", err)
+		logger.Error("Invalid duration format",
+			"error", err,
+			"hint", "Use format like: 30s, 5m, 1h (e.g., -duration 2m)")
+		os.Exit(1)
 	}
 
 	// Parse timeout
 	requestTimeout, err := time.ParseDuration(cfg.Timeout)
 	if err != nil {
-		log.Fatalf("Invalid timeout format: %v\nUse format like: 30s, 5m, 1h (e.g., -timeout 30s)", err)
+		logger.Error("Invalid timeout format",
+			"error", err,
+			"hint", "Use format like: 30s, 5m, 1h (e.g., -timeout 30s)")
+		os.Exit(1)
 	}
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), testDuration)
-	defer cancel()
-
-	// Initialize stress tester
+	// Initialize stress tester config
 	testerConfig := domain.TesterConfig{
 		BaseURL:            cfg.BaseURL,
 		Concurrency:        cfg.Concurrency,
@@ -183,24 +212,10 @@ func main() {
 		NoProgress:         *noProgress,
 	}
 
-	stressTester, err := tester.New(testerConfig, logger)
+	// Run stress test in a function that handles its own context
+	results, err := runStressTest(testerConfig, testDuration, logger)
 	if err != nil {
-		cancel()
-		log.Fatalf("Tester initialization failed: %v\nCheck your configuration and base URL", err) //nolint:gocritic // cancel() is called explicitly before exit
-	}
-
-	// Run stress test
-	logger.Info("Starting stress test",
-		"base_url", cfg.BaseURL,
-		"concurrency", cfg.Concurrency,
-		"duration", cfg.Duration,
-		"rate", cfg.Rate,
-		"follow_links", cfg.FollowLinks,
-		"max_depth", cfg.MaxDepth)
-
-	results, err := stressTester.Run(ctx)
-	if err != nil {
-		log.Printf("Stress test failed: %v", err)
+		logger.Error("Stress test failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -230,8 +245,11 @@ func main() {
 		// Save JSON results
 		err = rep.GenerateJSON(cfg.OutputFile)
 		if err != nil {
-			cancel()
-			log.Fatalf("Cannot write results to %s: %v\nCheck file permissions and disk space", cfg.OutputFile, err)
+			logger.Error("Cannot write results",
+				"file", cfg.OutputFile,
+				"error", err,
+				"hint", "Check file permissions and disk space")
+			os.Exit(1)
 		}
 		logger.Info("Results saved", "file", cfg.OutputFile)
 
@@ -246,318 +264,24 @@ func main() {
 	}
 }
 
-type configOptions struct {
-	baseURL            string
-	duration           string
-	timeout            string
-	userAgent          string
-	outputFile         string
-	rate               float64
-	concurrency        int
-	maxDepth           int
-	queueSize          int
-	followLinks        bool
-	respect429         bool
-	dryRun             bool
-	verbose            bool
-	insecureSkipVerify bool
-	ignoreRobots       bool
-	authType           string
-	authUsername       string
-	authPassword       string
-	authToken          string
-	authCookie         string
-	authHeader         string
-}
+// runStressTest executes the stress test with proper context management.
+// This function encapsulates context creation and cancellation to ensure
+// deferred cleanup runs correctly regardless of how the function exits.
+func runStressTest(config domain.TesterConfig, duration time.Duration, logger *slog.Logger) (*domain.TestResults, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	defer cancel()
 
-func loadConfiguration(configPath string, opts *configOptions) (*domain.Config, error) {
-	loader := config.NewLoader()
-
-	var cfg *domain.Config
-
-	if configPath != "" {
-		// Load from file
-		loadedCfg, err := loader.LoadFromFile(configPath)
-		if err != nil {
-			return nil, err
-		}
-		cfg = loadedCfg
-	} else {
-		// Start with defaults
-		defaultCfg := domain.DefaultConfig()
-		cfg = &defaultCfg
-	}
-
-	// Override with CLI flags (if provided)
-	if opts.baseURL != "" {
-		cfg.BaseURL = opts.baseURL
-	}
-	if opts.concurrency != 0 {
-		cfg.Concurrency = opts.concurrency
-	}
-	if opts.duration != "" {
-		cfg.Duration = opts.duration
-	}
-	if opts.timeout != "" {
-		cfg.Timeout = opts.timeout
-	}
-	if opts.rate != 0 {
-		cfg.Rate = opts.rate
-	}
-	if opts.userAgent != "" {
-		cfg.UserAgent = opts.userAgent
-	}
-	if opts.maxDepth != 0 {
-		cfg.MaxDepth = opts.maxDepth
-	}
-	if opts.queueSize != 0 {
-		cfg.QueueSize = opts.queueSize
-	}
-	if opts.outputFile != "" {
-		cfg.OutputFile = opts.outputFile
-	}
-	cfg.FollowLinks = opts.followLinks
-	cfg.Respect429 = opts.respect429
-	cfg.DryRun = opts.dryRun
-	cfg.Verbose = opts.verbose
-	cfg.InsecureSkipVerify = opts.insecureSkipVerify
-	cfg.IgnoreRobots = opts.ignoreRobots
-
-	// Build authentication configuration from CLI flags
-	if opts.authType != "" || opts.authUsername != "" || opts.authToken != "" ||
-		opts.authCookie != "" || opts.authHeader != "" {
-		authCfg := &domain.AuthConfig{
-			Type:     opts.authType,
-			Username: opts.authUsername,
-			Password: opts.authPassword,
-			Token:    opts.authToken,
-		}
-
-		// Parse cookie string (name=value)
-		if opts.authCookie != "" {
-			authCfg.Cookies = make(map[string]string)
-			parts := strings.SplitN(opts.authCookie, "=", 2)
-			if len(parts) == 2 {
-				authCfg.Cookies[parts[0]] = parts[1]
-			}
-		}
-
-		// Parse header string (Name:Value)
-		if opts.authHeader != "" {
-			authCfg.Headers = make(map[string]string)
-			parts := strings.SplitN(opts.authHeader, ":", 2)
-			if len(parts) == 2 {
-				authCfg.Headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-			}
-		}
-
-		cfg.Auth = authCfg
-	}
-
-	// Merge with defaults for any missing values
-	cfg = loader.MergeWithDefaults(cfg)
-
-	return cfg, nil
-}
-
-func showHelpMessage() {
-	fmt.Println(`Lobster - Intelligent Web Stress Testing Tool
-
-USAGE:
-    lobster [OPTIONS]
-
-OPTIONS:
-    -config string
-        Path to configuration file (JSON format)
-    -url string
-        Base URL to test (default: http://localhost:3000)
-    -concurrency int
-        Number of concurrent workers (default: 5)
-    -duration string
-        Test duration (e.g., 30s, 5m, 1h) (default: 2m)
-    -timeout string
-        Request timeout (default: 30s)
-    -rate float
-        Requests per second limit (default: 2.0)
-        Safety: Minimum 0.1 req/s enforced
-        Warning prompt for rates < 1.0 req/s
-    -user-agent string
-        User agent string (default: Lobster/1.0)
-    -follow-links
-        Follow links found in pages (default: true)
-    -max-depth int
-        Maximum crawl depth (default: 3)
-    -queue-size int
-        URL queue buffer size (default: 10000)
-        Memory usage: ~8 bytes per queue slot
-    -respect-429
-        Respect HTTP 429 with exponential backoff (default: true)
-        Backoff: 1s, 2s, 4s, 8s, 16s (max 30s)
-    -dry-run
-        Discover URLs without making test requests
-        Shows estimated test scope and discovered URLs
-    -insecure-skip-verify
-        INSECURE: Skip TLS certificate verification
-        Use ONLY for testing with self-signed certificates
-        Makes you vulnerable to man-in-the-middle attacks!
-    -ignore-robots
-        Ignore robots.txt directives (use responsibly)
-        Only use if you OWN the website or have explicit permission
-        Bypassing robots.txt may violate terms of service
-    -output string
-        Output file for results (JSON format)
-    -verbose
-        Enable verbose logging with structured output
-    -no-progress
-        Disable real-time progress updates
-    -compare string
-        Compare performance against target (e.g., Ghost, WordPress)
-
-AUTHENTICATION OPTIONS:
-    -auth-type string
-        Authentication type: basic, bearer, cookie, header
-    -auth-username string
-        Username for basic authentication
-    -auth-password string
-        Password for basic authentication
-    -auth-token string
-        Bearer token for authentication
-    -auth-cookie string
-        Cookie string in name=value format
-    -auth-header string
-        Custom header in Name:Value format
-
-    -version
-        Show version information
-    -help
-        Show this help message
-
-EXAMPLES:
-    # Basic stress test
-    lobster -url http://localhost:3000
-
-    # High concurrency test with custom duration
-    lobster -url http://localhost:3000 -concurrency 50 -duration 5m
-
-    # Test with rate limiting and output
-    lobster -url http://localhost:3000 -rate 10 -output results.json
-
-    # Use configuration file
-    lobster -config myconfig.json
-
-    # Compare against competitor
-    lobster -url http://localhost:3000 -compare "Ghost"
-
-    # Quick validation test
-    lobster -url http://localhost:3000 -duration 30s -concurrency 5
-
-    # Test with basic authentication
-    lobster -url http://localhost:3000 -auth-type basic -auth-username admin -auth-password secret
-
-    # Test with bearer token
-    lobster -url http://api.example.com -auth-type bearer -auth-token eyJhbGc...
-
-    # Test with cookie authentication
-    lobster -url http://localhost:3000 -auth-type cookie -auth-cookie "session=abc123"
-
-    # Test with custom header (e.g., API key)
-    lobster -url http://api.example.com -auth-type header -auth-header "X-API-Key:your-key-here"
-
-CONFIGURATION FILE EXAMPLE:
-    {
-      "base_url": "http://localhost:3000",
-      "concurrency": 10,
-      "duration": "5m",
-      "timeout": "30s",
-      "rate": 10.0,
-      "user_agent": "Lobster/1.0",
-      "follow_links": true,
-      "max_depth": 3,
-      "queue_size": 10000,
-      "output_file": "results.json",
-      "verbose": false,
-      "auth": {
-        "type": "basic",
-        "username": "admin",
-        "password": "secret"
-      },
-      "performance_targets": {
-        "requests_per_second": 100,
-        "avg_response_time_ms": 50,
-        "p95_response_time_ms": 100,
-        "p99_response_time_ms": 200,
-        "success_rate": 99.0,
-        "error_rate": 1.0
-      }
-    }
-
-DOCUMENTATION:
-    Full documentation: https://github.com/vnykmshr/lobster
-    Report issues: https://github.com/vnykmshr/lobster/issues
-
-VERSION:
-    Lobster v` + version)
-}
-
-// validateRateLimit enforces safe rate limiting to prevent accidental DoS
-func validateRateLimit(rate *float64) error {
-	const (
-		minRate  = 0.1 // Minimum allowed rate (requests per second)
-		warnRate = 1.0 // Warning threshold for low rates
-	)
-
-	// Rate of 0 means no rate limiting (unlimited)
-	if *rate == 0 {
-		fmt.Fprintf(os.Stderr, "\nWARNING: No rate limiting enabled (rate=0)\n")
-		fmt.Fprintf(os.Stderr, "This will send requests as fast as possible.\n")
-		fmt.Fprintf(os.Stderr, "Make sure you have permission to test the target server.\n\n")
-		return nil
-	}
-
-	// Enforce minimum rate to prevent extremely slow tests
-	if *rate > 0 && *rate < minRate {
-		fmt.Fprintf(os.Stderr, "\nWARNING: Rate %.2f req/s is below minimum %.2f req/s\n", *rate, minRate)
-		fmt.Fprintf(os.Stderr, "Adjusting to minimum rate of %.2f req/s\n", minRate)
-		fmt.Fprintf(os.Stderr, "Rationale: Extremely low rates may indicate configuration error.\n\n")
-		*rate = minRate
-		return nil
-	}
-
-	// Warn about very low rates and prompt for confirmation if interactive
-	if *rate < warnRate {
-		fmt.Fprintf(os.Stderr, "\nWARNING: Low rate limit detected (%.2f req/s)\n", *rate)
-		fmt.Fprintf(os.Stderr, "This will send requests very slowly:\n")
-		fmt.Fprintf(os.Stderr, "- %.2f requests per second\n", *rate)
-		fmt.Fprintf(os.Stderr, "- ~%.0f requests per minute\n", *rate*60)
-		fmt.Fprintf(os.Stderr, "- Test may take a long time to complete\n\n")
-
-		// If interactive terminal, prompt for confirmation
-		if isInteractiveTerminal() {
-			fmt.Fprintf(os.Stderr, "Do you want to continue with this rate? (y/N): ")
-			reader := bufio.NewReader(os.Stdin)
-			response, err := reader.ReadString('\n')
-			if err != nil {
-				return fmt.Errorf("reading confirmation: %w", err)
-			}
-			response = strings.TrimSpace(strings.ToLower(response))
-			if response != "y" && response != "yes" {
-				return fmt.Errorf("test canceled by user")
-			}
-			fmt.Fprintf(os.Stderr, "\n")
-		} else {
-			fmt.Fprintf(os.Stderr, "Continuing in non-interactive mode...\n\n")
-		}
-	}
-
-	return nil
-}
-
-// isInteractiveTerminal checks if the program is running in an interactive terminal
-func isInteractiveTerminal() bool {
-	fileInfo, err := os.Stdin.Stat()
+	stressTester, err := tester.New(config, logger)
 	if err != nil {
-		return false
+		return nil, fmt.Errorf("tester initialization failed: %w", err)
 	}
-	// Check if stdin is a character device (terminal) rather than a pipe or file
-	return (fileInfo.Mode() & os.ModeCharDevice) != 0
+
+	logger.Info("Starting stress test",
+		"base_url", config.BaseURL,
+		"concurrency", config.Concurrency,
+		"rate", config.Rate,
+		"follow_links", config.FollowLinks,
+		"max_depth", config.MaxDepth)
+
+	return stressTester.Run(ctx)
 }
