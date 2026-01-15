@@ -72,11 +72,11 @@ func (c *Crawler) isValidLink(link string) bool {
 }
 
 // AddURL adds a URL to the discovery queue if it's valid and not already discovered
-func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTask) bool {
+func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTask) domain.AddURLResult {
 	// Parse and validate URL
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLParseError}
 	}
 
 	// Make relative URLs absolute
@@ -86,7 +86,7 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTas
 
 	// Only process URLs from the same host
 	if parsedURL.Host != c.baseURL.Host {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLInvalidHost}
 	}
 
 	// Clean URL (remove fragment, normalize)
@@ -95,7 +95,7 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTas
 
 	// Check if already discovered
 	if _, exists := c.discoveredURLs.LoadOrStore(cleanURL, true); exists {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLDuplicate}
 	}
 
 	// Track discovered URL count (O(1) instead of iterating sync.Map)
@@ -103,17 +103,17 @@ func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTas
 
 	// Check depth limit
 	if depth > c.maxDepth {
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLDepthExceeded}
 	}
 
 	// Add to queue
 	select {
 	case urlQueue <- domain.URLTask{URL: cleanURL, Depth: depth}:
-		return true
+		return domain.AddURLResult{Added: true, Reason: domain.AddURLSuccess}
 	default:
 		// Queue full - track dropped URLs for visibility
 		c.droppedCnt.Add(1)
-		return false
+		return domain.AddURLResult{Added: false, Reason: domain.AddURLQueueFull}
 	}
 }
 

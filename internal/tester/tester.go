@@ -599,7 +599,8 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 	// Extract and queue links
 	links := t.crawler.ExtractLinks(string(body))
 	for _, link := range links {
-		if t.crawler.AddURL(link, task.Depth+1, t.urlQueue) {
+		result := t.crawler.AddURL(link, task.Depth+1, t.urlQueue)
+		if result.Added {
 			t.results.URLsDiscovered = t.crawler.GetDiscoveredCount()
 		}
 	}

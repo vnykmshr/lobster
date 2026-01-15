@@ -150,3 +150,23 @@ func DefaultPerformanceTargets() PerformanceTargets {
 		ErrorRate:         1.0,
 	}
 }
+
+// AddURLResult constants for URL addition outcomes.
+const (
+	AddURLSuccess       = "success"
+	AddURLDuplicate     = "duplicate"
+	AddURLQueueFull     = "queue_full"
+	AddURLDepthExceeded = "depth_exceeded"
+	AddURLInvalidHost   = "invalid_host"
+	AddURLParseError    = "parse_error"
+)
+
+// AddURLResult represents the result of attempting to add a URL to the crawl queue.
+// Provides detailed feedback about why a URL was or wasn't added.
+type AddURLResult struct {
+	// Added is true if the URL was successfully added to the queue.
+	Added bool
+	// Reason explains why the URL was or wasn't added.
+	// Values: "success", "duplicate", "queue_full", "depth_exceeded", "invalid_host", "parse_error"
+	Reason string
+}

@@ -10,8 +10,8 @@ type URLCrawler interface {
 	ExtractLinks(body string) []string
 
 	// AddURL adds a URL to the discovery queue if valid and not already discovered.
-	// Returns true if the URL was added to the queue successfully.
-	AddURL(rawURL string, depth int, queue chan<- URLTask) bool
+	// Returns an AddURLResult with the outcome and reason.
+	AddURL(rawURL string, depth int, queue chan<- URLTask) AddURLResult
 
 	// GetDiscoveredCount returns the total number of unique URLs discovered.
 	GetDiscoveredCount() int
