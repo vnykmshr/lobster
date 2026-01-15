@@ -14,13 +14,22 @@ import (
 
 // Integration tests verify end-to-end workflows and multi-component interactions.
 // These tests are skipped in short mode as they require more runtime.
+// They are also skipped with race detector as they can timeout under the overhead.
+
+// skipSlowIntegrationTest skips the test in short mode.
+// Note: Race detector adds 2-10x overhead. These tests have tight timeouts
+// and can fail intermittently under race. Use `go test -short` for quick checks.
+func skipSlowIntegrationTest(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+}
 
 // TestIntegration_FullCrawlWorkflow tests the complete crawl workflow:
 // seed URL → discover links → validate all URLs → generate final results
 func TestIntegration_FullCrawlWorkflow(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+	skipSlowIntegrationTest(t)
 
 	// Create a multi-page test site
 	var requestCount int64
@@ -115,9 +124,7 @@ func TestIntegration_FullCrawlWorkflow(t *testing.T) {
 
 // TestIntegration_DryRunMode verifies dry-run mode discovers links without load testing
 func TestIntegration_DryRunMode(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+	skipSlowIntegrationTest(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -167,9 +174,7 @@ func TestIntegration_DryRunMode(t *testing.T) {
 
 // TestIntegration_AuthenticationWorkflow tests end-to-end authentication
 func TestIntegration_AuthenticationWorkflow(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+	skipSlowIntegrationTest(t)
 
 	// Create a server that requires authentication
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -225,9 +230,7 @@ func TestIntegration_AuthenticationWorkflow(t *testing.T) {
 
 // TestIntegration_RobotsTxtCompliance tests robots.txt enforcement
 func TestIntegration_RobotsTxtCompliance(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+	skipSlowIntegrationTest(t)
 
 	var allowedCount, blockedCount int64
 
@@ -292,9 +295,7 @@ func TestIntegration_RobotsTxtCompliance(t *testing.T) {
 
 // TestIntegration_ErrorHandlingAndRecovery tests error scenarios
 func TestIntegration_ErrorHandlingAndRecovery(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+	skipSlowIntegrationTest(t)
 
 	var requestNum int64
 
@@ -395,9 +396,7 @@ func TestIntegration_ErrorHandlingAndRecovery(t *testing.T) {
 
 // TestIntegration_ConcurrentCrawling tests concurrent worker behavior
 func TestIntegration_ConcurrentCrawling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+	skipSlowIntegrationTest(t)
 
 	var concurrentRequests int64
 	var maxConcurrent int64
@@ -410,8 +409,8 @@ func TestIntegration_ConcurrentCrawling(t *testing.T) {
 
 		// Update max concurrent
 		for {
-			max := atomic.LoadInt64(&maxConcurrent)
-			if current <= max || atomic.CompareAndSwapInt64(&maxConcurrent, max, current) {
+			currentMax := atomic.LoadInt64(&maxConcurrent)
+			if current <= currentMax || atomic.CompareAndSwapInt64(&maxConcurrent, currentMax, current) {
 				break
 			}
 		}
