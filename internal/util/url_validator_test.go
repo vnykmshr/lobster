@@ -1,3 +1,4 @@
+//nolint:revive // util is an established package name pattern
 package util
 
 import (

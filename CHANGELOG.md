@@ -31,6 +31,7 @@ Major security hardening release with significant performance improvements.
 - **Result channel buffering**: Dynamic buffer sizing based on concurrency to prevent blocking under load
 - **HTTP/2 enabled by default**: `ForceAttemptHTTP2: true` for HTTPS connections
 - **429 retry timing**: Response time now correctly reflects only the actual request duration, not retry wait time
+- **CLI architecture**: Extracted CLI functions into `internal/cli` package for improved testability and maintainability
 
 ### Removed
 

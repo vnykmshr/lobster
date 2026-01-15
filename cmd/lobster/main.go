@@ -285,4 +285,3 @@ func runStressTest(config domain.TesterConfig, duration time.Duration, logger *s
 
 	return stressTester.Run(ctx)
 }
-
