@@ -86,7 +86,7 @@ func New(config domain.TesterConfig, logger *slog.Logger) (*Tester, error) {
 	// Create HTTP Transport with connection pooling for high concurrency
 	// Default net/http Transport has MaxIdleConnsPerHost=2 which bottlenecks parallel requests
 	transport := &http.Transport{
-		MaxIdleConns:        100,                     // Total pool size across all hosts
+		MaxIdleConns:        100,                    // Total pool size across all hosts
 		MaxIdleConnsPerHost: config.Concurrency * 2, // Allow 2x concurrency to handle bursts
 		MaxConnsPerHost:     config.Concurrency * 2, // Limit connections per host
 		IdleConnTimeout:     90 * time.Second,       // Keep idle connections alive
