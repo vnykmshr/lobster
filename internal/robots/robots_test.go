@@ -393,9 +393,9 @@ func TestMatchesPath(t *testing.T) {
 		{"/a/x/y/c", "/a/*/c", true}, // * matches "x/y"
 
 		// Edge cases
-		{"", "/", false},       // empty path doesn't match /
-		{"/", "/", true},       // root matches root
-		{"/foo", "", false},    // empty pattern matches nothing
+		{"", "/", false},         // empty path doesn't match /
+		{"/", "/", true},         // root matches root
+		{"/foo", "", false},      // empty pattern matches nothing
 		{"/path", "/path", true}, // exact match
 	}
 
