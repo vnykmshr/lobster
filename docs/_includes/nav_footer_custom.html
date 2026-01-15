@@ -1,26 +1,38 @@
-<button class="btn js-toggle-dark-mode">Toggle dark mode</button>
+<button class="btn js-toggle-dark-mode">Theme: System</button>
 
 <script>
-const toggleDarkMode = document.querySelector('.js-toggle-dark-mode');
-
-jtd.addEvent(toggleDarkMode, 'click', function(){
-  if (jtd.getTheme() === 'dark') {
-    jtd.setTheme('light');
-    localStorage.setItem('theme', 'light');
-    toggleDarkMode.textContent = 'Toggle dark mode';
-  } else {
-    jtd.setTheme('dark');
-    localStorage.setItem('theme', 'dark');
-    toggleDarkMode.textContent = 'Toggle light mode';
-  }
-});
-
-// Set initial button text based on current theme
 (function() {
-  var savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    toggleDarkMode.textContent = 'Toggle light mode';
-    jtd.setTheme('dark');
+  var toggleBtn = document.querySelector('.js-toggle-dark-mode');
+  var modes = ['system', 'light', 'dark'];
+  var labels = { system: 'System', light: 'Light', dark: 'Dark' };
+
+  function getSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
+
+  function applyMode(mode) {
+    var theme = (mode === 'system') ? getSystemTheme() : mode;
+    jtd.setTheme(theme);
+    toggleBtn.textContent = 'Theme: ' + labels[mode];
+    localStorage.setItem('theme-mode', mode);
+  }
+
+  // Initialize
+  var currentMode = localStorage.getItem('theme-mode') || 'system';
+  applyMode(currentMode);
+
+  // Listen for system preference changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+    if (localStorage.getItem('theme-mode') === 'system') {
+      jtd.setTheme(getSystemTheme());
+    }
+  });
+
+  // Cycle through modes on click
+  jtd.addEvent(toggleBtn, 'click', function() {
+    var current = localStorage.getItem('theme-mode') || 'system';
+    var nextIndex = (modes.indexOf(current) + 1) % modes.length;
+    applyMode(modes[nextIndex]);
+  });
 })();
 </script>

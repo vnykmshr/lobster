@@ -1,9 +1,13 @@
 <script>
 // Apply saved theme on page load (before render to prevent flash)
 (function() {
-  var savedTheme = localStorage.getItem('theme');
-  if (savedTheme) {
-    document.documentElement.setAttribute('data-theme', savedTheme);
+  var savedMode = localStorage.getItem('theme-mode') || 'system';
+  var theme;
+  if (savedMode === 'system') {
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } else {
+    theme = savedMode;
   }
+  document.documentElement.setAttribute('data-theme', theme);
 })();
 </script>
