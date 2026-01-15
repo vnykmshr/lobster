@@ -326,7 +326,7 @@ If you're unsure whether your use case is appropriate:
 
 These guidelines may be updated as best practices evolve. Check the [repository](https://github.com/vnykmshr/lobster) for the latest version.
 
-Last updated: 2024
+Last updated: 2025
 
 ## Summary
 

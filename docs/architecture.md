@@ -752,7 +752,7 @@ func extractLinks(body io.Reader) []string {
 
 - **JavaScript-heavy SPAs**: Lobster parses static HTML; it won't execute JavaScript
 - **Extremely large sites**: 10,000+ pages may be slow and memory-intensive
-- **Complex authentication flows**: v1.0 doesn't support authentication (planned for v0.4+)
+- **Complex authentication flows**: Lobster supports bearer, basic, header, and cookie auth but not multi-step OAuth or SAML flows
 - **Production load testing**: Use dedicated solutions with distributed workers
 - **Precise latency measurements**: Not a replacement for dedicated APM tools
 
@@ -760,13 +760,13 @@ func extractLinks(body io.Reader) []string {
 
 Lobster demonstrates that there's value in the space between simple single-URL load testing tools and complex enterprise solutions. By focusing on automation (crawler-first design), validation (pass/fail criteria), and developer experience (zero-config defaults), it addresses a specific workflow gap in the testing toolkit.
 
-The implementation choices—Clean Architecture, token bucket rate limiting, multi-format reporting—prioritize maintainability and extensibility over raw performance. This positions Lobster well for future enhancements like authentication support, distributed testing, and real-time result streaming.
+The implementation choices—Clean Architecture, token bucket rate limiting, multi-format reporting—prioritize maintainability and extensibility over raw performance. This positions Lobster well for future enhancements like distributed testing and real-time result streaming.
 
 The tool is most effective as part of a continuous integration pipeline, providing automated performance validation before deployments. While it won't replace dedicated monitoring solutions or distributed load testing platforms, it fills a valuable niche for rapid, automated performance validation during development and in CI/CD workflows.
 
 ---
 
 **Project**: [github.com/vnykmshr/lobster](https://github.com/vnykmshr/lobster)
-**Version**: 1.0.0
+**Version**: 2.0.0
 **License**: MIT
 **Author**: @vnykmshr

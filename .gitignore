@@ -54,3 +54,6 @@ todos/
 
 # Local development context
 .claude/
+
+# Playwright MCP screenshots
+.playwright-mcp/
