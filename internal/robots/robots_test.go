@@ -313,7 +313,7 @@ func TestFetchAndParse_Timeout(t *testing.T) {
 
 	// Verify the error is related to the deadline
 	if ctx.Err() == nil {
-		t.Error("Expected context to be cancelled after timeout")
+		t.Error("Expected context to be canceled after timeout")
 	}
 
 	// Should be conservative and disallow everything after timeout error
