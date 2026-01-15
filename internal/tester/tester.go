@@ -4,6 +4,7 @@ package tester
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -586,7 +587,7 @@ func (t *Tester) discoverLinksFromResponse(resp *http.Response, task domain.URLT
 	// Limit body reading for link extraction (smaller than MaxResponseSize)
 	limitedReader := io.LimitReader(resp.Body, linkExtractionLimit)
 	body, readErr := io.ReadAll(limitedReader)
-	if readErr != nil && readErr != io.EOF {
+	if readErr != nil && !errors.Is(readErr, io.EOF) {
 		t.logger.Debug("Error reading response body for link extraction",
 			"url", util.SanitizeURLDefault(task.URL),
 			"error", readErr)
