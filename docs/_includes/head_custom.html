@@ -1,3 +1,18 @@
+<style>
+.theme-toggle {
+  cursor: pointer;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.theme-toggle:hover {
+  opacity: 1;
+}
+</style>
+
 <script>
 // Apply saved theme on page load (before render to prevent flash)
 (function() {
@@ -10,4 +25,59 @@
   }
   document.documentElement.setAttribute('data-theme', theme);
 })();
+
+// Add theme toggle to navbar after DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+  var modes = ['system', 'light', 'dark'];
+  var icons = { system: '\u25D1', light: '\u2600', dark: '\u263E' };
+  var titles = { system: 'Theme: System', light: 'Theme: Light', dark: 'Theme: Dark' };
+
+  function getSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function applyMode(mode, btn) {
+    var theme = (mode === 'system') ? getSystemTheme() : mode;
+    jtd.setTheme(theme);
+    btn.textContent = icons[mode];
+    btn.title = titles[mode];
+    localStorage.setItem('theme-mode', mode);
+  }
+
+  // Create toggle button
+  var btn = document.createElement('button');
+  btn.className = 'theme-toggle';
+  btn.setAttribute('aria-label', 'Toggle theme');
+
+  // Initialize
+  var currentMode = localStorage.getItem('theme-mode') || 'system';
+  btn.textContent = icons[currentMode];
+  btn.title = titles[currentMode];
+
+  // Insert into aux nav
+  var auxNav = document.querySelector('.site-nav, .aux-nav');
+  if (auxNav) {
+    var auxList = auxNav.querySelector('ul');
+    if (auxList) {
+      var li = document.createElement('li');
+      li.className = 'aux-nav-item';
+      li.appendChild(btn);
+      auxList.appendChild(li);
+    }
+  }
+
+  // Listen for system preference changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+    if (localStorage.getItem('theme-mode') === 'system') {
+      jtd.setTheme(getSystemTheme());
+    }
+  });
+
+  // Cycle through modes on click
+  btn.addEventListener('click', function() {
+    var current = localStorage.getItem('theme-mode') || 'system';
+    var nextIndex = (modes.indexOf(current) + 1) % modes.length;
+    applyMode(modes[nextIndex], btn);
+  });
+});
 </script>
