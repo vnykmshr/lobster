@@ -3,10 +3,6 @@
 // functions from the main package to improve testability and separation of concerns.
 package cli
 
-import (
-	"github.com/vnykmshr/lobster/internal/domain"
-)
-
 // ConfigOptions holds command-line flag values for configuration.
 // These are passed to LoadConfiguration to build the final Config.
 type ConfigOptions struct {
@@ -30,10 +26,4 @@ type ConfigOptions struct {
 	AuthHeader         string
 	AuthPasswordStdin  bool
 	AuthTokenStdin     bool
-}
-
-// Result holds the loaded configuration and any warnings generated during loading.
-type Result struct {
-	Config   *domain.Config
-	Warnings []string
 }
