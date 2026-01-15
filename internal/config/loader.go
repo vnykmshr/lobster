@@ -102,54 +102,53 @@ func (l *Loader) SaveToFile(config *domain.Config, path string) error {
 	return nil
 }
 
-// MergeWithDefaults merges provided config with defaults
+// mergeString returns value if non-empty, otherwise returns fallback.
+func mergeString(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+// mergeInt returns value if non-zero, otherwise returns fallback.
+func mergeInt(value, fallback int) int {
+	if value == 0 {
+		return fallback
+	}
+	return value
+}
+
+// mergeFloat64 returns value if non-zero, otherwise returns fallback.
+func mergeFloat64(value, fallback float64) float64 {
+	if value == 0 {
+		return fallback
+	}
+	return value
+}
+
+// MergeWithDefaults merges provided config with defaults.
+// Zero values in config are replaced with corresponding default values.
 func (l *Loader) MergeWithDefaults(config *domain.Config) *domain.Config {
 	defaults := domain.DefaultConfig()
 
-	if config.BaseURL == "" {
-		config.BaseURL = defaults.BaseURL
-	}
-	if config.Concurrency == 0 {
-		config.Concurrency = defaults.Concurrency
-	}
-	if config.Duration == "" {
-		config.Duration = defaults.Duration
-	}
-	if config.Timeout == "" {
-		config.Timeout = defaults.Timeout
-	}
-	if config.Rate == 0 {
-		config.Rate = defaults.Rate
-	}
-	if config.UserAgent == "" {
-		config.UserAgent = defaults.UserAgent
-	}
-	if config.MaxDepth == 0 {
-		config.MaxDepth = defaults.MaxDepth
-	}
-	if config.QueueSize == 0 {
-		config.QueueSize = defaults.QueueSize
-	}
+	config.BaseURL = mergeString(config.BaseURL, defaults.BaseURL)
+	config.Concurrency = mergeInt(config.Concurrency, defaults.Concurrency)
+	config.Duration = mergeString(config.Duration, defaults.Duration)
+	config.Timeout = mergeString(config.Timeout, defaults.Timeout)
+	config.Rate = mergeFloat64(config.Rate, defaults.Rate)
+	config.UserAgent = mergeString(config.UserAgent, defaults.UserAgent)
+	config.MaxDepth = mergeInt(config.MaxDepth, defaults.MaxDepth)
+	config.QueueSize = mergeInt(config.QueueSize, defaults.QueueSize)
 
 	// Merge performance targets
-	if config.PerformanceTargets.RequestsPerSecond == 0 {
-		config.PerformanceTargets.RequestsPerSecond = defaults.PerformanceTargets.RequestsPerSecond
-	}
-	if config.PerformanceTargets.AvgResponseTimeMs == 0 {
-		config.PerformanceTargets.AvgResponseTimeMs = defaults.PerformanceTargets.AvgResponseTimeMs
-	}
-	if config.PerformanceTargets.P95ResponseTimeMs == 0 {
-		config.PerformanceTargets.P95ResponseTimeMs = defaults.PerformanceTargets.P95ResponseTimeMs
-	}
-	if config.PerformanceTargets.P99ResponseTimeMs == 0 {
-		config.PerformanceTargets.P99ResponseTimeMs = defaults.PerformanceTargets.P99ResponseTimeMs
-	}
-	if config.PerformanceTargets.SuccessRate == 0 {
-		config.PerformanceTargets.SuccessRate = defaults.PerformanceTargets.SuccessRate
-	}
-	if config.PerformanceTargets.ErrorRate == 0 {
-		config.PerformanceTargets.ErrorRate = defaults.PerformanceTargets.ErrorRate
-	}
+	pt := &config.PerformanceTargets
+	dt := &defaults.PerformanceTargets
+	pt.RequestsPerSecond = mergeFloat64(pt.RequestsPerSecond, dt.RequestsPerSecond)
+	pt.AvgResponseTimeMs = mergeFloat64(pt.AvgResponseTimeMs, dt.AvgResponseTimeMs)
+	pt.P95ResponseTimeMs = mergeFloat64(pt.P95ResponseTimeMs, dt.P95ResponseTimeMs)
+	pt.P99ResponseTimeMs = mergeFloat64(pt.P99ResponseTimeMs, dt.P99ResponseTimeMs)
+	pt.SuccessRate = mergeFloat64(pt.SuccessRate, dt.SuccessRate)
+	pt.ErrorRate = mergeFloat64(pt.ErrorRate, dt.ErrorRate)
 
 	return config
 }

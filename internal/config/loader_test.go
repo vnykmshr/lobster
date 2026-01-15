@@ -381,3 +381,74 @@ func TestSubstituteEnvVars_NoVars(t *testing.T) {
 		t.Errorf("Expected unchanged input, got '%s'", result)
 	}
 }
+
+func TestMergeString(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		fallback string
+		expected string
+	}{
+		{"empty value uses fallback", "", "fallback", "fallback"},
+		{"non-empty value preserved", "value", "fallback", "value"},
+		{"both empty returns empty", "", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeString(tt.value, tt.fallback)
+			if result != tt.expected {
+				t.Errorf("mergeString(%q, %q) = %q, want %q",
+					tt.value, tt.fallback, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMergeInt(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    int
+		fallback int
+		expected int
+	}{
+		{"zero value uses fallback", 0, 10, 10},
+		{"non-zero value preserved", 5, 10, 5},
+		{"both zero returns zero", 0, 0, 0},
+		{"negative value preserved", -5, 10, -5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeInt(tt.value, tt.fallback)
+			if result != tt.expected {
+				t.Errorf("mergeInt(%d, %d) = %d, want %d",
+					tt.value, tt.fallback, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMergeFloat64(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    float64
+		fallback float64
+		expected float64
+	}{
+		{"zero value uses fallback", 0, 10.5, 10.5},
+		{"non-zero value preserved", 5.5, 10.5, 5.5},
+		{"both zero returns zero", 0, 0, 0},
+		{"negative value preserved", -5.5, 10.5, -5.5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mergeFloat64(tt.value, tt.fallback)
+			if result != tt.expected {
+				t.Errorf("mergeFloat64(%f, %f) = %f, want %f",
+					tt.value, tt.fallback, result, tt.expected)
+			}
+		})
+	}
+}
