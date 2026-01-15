@@ -35,6 +35,10 @@ search:
 back_to_top: true
 back_to_top_text: "Back to top"
 
+# Mermaid diagrams
+mermaid:
+  version: "11"
+
 # Heading anchor links
 heading_anchors: true
 
