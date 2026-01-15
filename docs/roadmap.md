@@ -1,4 +1,9 @@
-# Lobster Roadmap
+---
+title: Roadmap
+nav_order: 9
+---
+
+# Roadmap
 
 This roadmap outlines the phased approach to maturing Lobster into a production-ready, feature-rich web stress testing tool. Each phase builds on the previous, delivering incremental value while maintaining backward compatibility.
 
@@ -381,15 +386,8 @@ Pre-1.0 versioning (0.x.x):
 
 ## Getting Involved
 
-We welcome community input on this roadmap!
+We welcome community input on this roadmap.
 
-- 💬 **Discuss**: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
-- 🐛 **Issues**: [Feature Requests](https://github.com/vnykmshr/lobster/issues/new?labels=enhancement)
-- 🤝 **Contribute**: See [CONTRIBUTING.md](CONTRIBUTING.md)
-- 📧 **Contact**: Open an issue or discussion
-
----
-
-**Last Updated**: 2026-01-15
-**Next Review**: 2026-02-15
-**Owner**: @vnykmshr
+- [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- [Feature Requests](https://github.com/vnykmshr/lobster/issues/new?labels=enhancement)
+- [Contributing Guidelines](contributing)

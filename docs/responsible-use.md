@@ -1,10 +1,15 @@
+---
+title: Responsible Use
+nav_order: 10
+---
+
 # Responsible Use Guidelines
 
 ## Introduction
 
-Lobster is a powerful web application load testing tool designed to help developers and QA teams validate application performance. With great power comes great responsibility. This document outlines the legal, ethical, and technical guidelines for using Lobster responsibly.
+Lobster is a powerful web application load testing tool designed to help developers and QA teams validate application performance. This document outlines the legal, ethical, and technical guidelines for using Lobster responsibly.
 
-**TL;DR**: Only test systems you own or have explicit written permission to test. Respect rate limits, robots.txt, and privacy. If in doubt, don't.
+**Summary**: Only test systems you own or have explicit written permission to test. Respect rate limits, robots.txt, and privacy. If in doubt, do not proceed.
 
 ## Legal Requirements
 

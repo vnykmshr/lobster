@@ -1,4 +1,11 @@
-# Building Lobster: An Intelligent Web Stress Testing Tool with Automated URL Discovery
+---
+title: Architecture
+nav_order: 4
+---
+
+# Architecture
+
+A technical deep-dive into how Lobster works.
 
 ## Introduction
 

@@ -1,3 +1,8 @@
+---
+title: Testing
+nav_order: 7
+---
+
 # Testing Strategy
 
 This document describes the testing approach for Lobster, including test categories, coverage goals, and how to run tests locally.

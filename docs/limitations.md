@@ -1,3 +1,8 @@
+---
+title: Limitations
+nav_order: 5
+---
+
 # Limitations
 
 Lobster is designed as a single-machine load testing tool for web applications. This document outlines its limitations and when to use alternative approaches.
@@ -286,7 +291,7 @@ Planned improvements for future versions:
 - WebSocket testing
 - Cloud deployment options
 
-See ROADMAP.md for detailed feature timeline.
+See the [roadmap](roadmap) for detailed feature timeline.
 
 ## Working Around Limitations
 
@@ -346,6 +351,6 @@ If you hit limitations not documented here:
 - Check existing GitHub issues
 - Open a new issue with your use case
 - Consider if your needs require distributed testing
-- Review alternative tools in ROADMAP.md
+- Review alternative tools in the [roadmap](roadmap)
 
 We're always interested in understanding real-world usage and limitations.

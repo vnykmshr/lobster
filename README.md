@@ -1,13 +1,13 @@
 # Lobster
 
-**Lobster** is an intelligent web stress testing tool that automatically discovers URLs by crawling your application and validates performance under load. Point it at your app, and it handles the rest—zero configuration required.
+**Lobster** is an intelligent web stress testing tool that automatically discovers URLs by crawling your application and validates performance under load. Point it at your app, and it handles the rest.
 
 ## Why Lobster?
 
 - **Zero Config**: Point and shoot
 - **Auto-Discovery**: Crawls and finds all URLs
 - **Pass/Fail Validation**: Not just metrics
-- **Beautiful Reports**: HTML + JSON + console
+- **Security Hardened**: SSRF protection, secure credential handling
 - **CI/CD Ready**: Fast, reliable, scriptable
 
 ## Features
@@ -18,6 +18,7 @@
 - **Rich Reports**: HTML (charts), JSON (API), console (real-time)
 - **Smart Rate Limiting**: Token bucket via [goflow](https://github.com/vnykmshr/goflow)
 - **robots.txt Compliance**: Respects website preferences by default
+- **SSRF Protection**: Blocks private IP ranges by default
 
 ## Quick Start
 
@@ -51,13 +52,27 @@ lobster -url http://localhost:3000 -allow-private-ips
 
 Lobster crawls your app, tests all discovered URLs under load, and generates reports.
 
-For more examples, see [QUICKSTART.md](docs/QUICKSTART.md).
+### With Authentication
+
+```bash
+# Basic authentication
+export LOBSTER_AUTH_PASSWORD="secret"
+lobster -url https://api.example.com -auth-type basic -auth-username admin
+
+# Bearer token
+export LOBSTER_AUTH_TOKEN="your-api-token"
+lobster -url https://api.example.com -auth-type bearer
+```
+
+For more examples, see the [Quick Start Guide](https://vnykmshr.github.io/lobster/quickstart).
 
 ## Configuration
 
 Key flags: `-url`, `-concurrency`, `-duration`, `-rate`, `-max-depth`, `-output`
 
 Use `-config config.json` for complex setups. See `examples/config.example.json` for template.
+
+Full reference: [Configuration Guide](https://vnykmshr.github.io/lobster/configuration)
 
 ## How It Works
 
@@ -109,9 +124,9 @@ lobster/
 └── examples/           # Example configs
 ```
 
-**Domain** → **Crawler** → **Tester** → **Reporter** + **Validator**
+**Domain** -> **Crawler** -> **Tester** -> **Reporter** + **Validator**
 
-See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for details.
+See [Architecture](https://vnykmshr.github.io/lobster/architecture) for technical details.
 
 ## Reports
 
@@ -129,19 +144,19 @@ Average Response Time: 18.7ms
 Requests/Second: 20.4
 Success Rate: 99.67%
 
-🎯 PERFORMANCE TARGET VALIDATION
+PERFORMANCE TARGET VALIDATION
 ============================================================
-✅ PASS Requests per Second:         20.4 req/s
-✅ PASS Average Response Time:        18.7ms
-✅ PASS 95th Percentile Response Time: 35.2ms
-✅ PASS Success Rate:                 99.67%
+PASS Requests per Second:         20.4 req/s
+PASS Average Response Time:        18.7ms
+PASS 95th Percentile Response Time: 35.2ms
+PASS Success Rate:                 99.67%
 
 Overall: 4/4 targets met (100.0%)
-🎉 ALL PERFORMANCE TARGETS MET!
+ALL PERFORMANCE TARGETS MET!
 ```
 
 ### HTML Report
-Beautiful, interactive report with:
+Interactive report with:
 - Overview dashboard with key metrics
 - Response status distribution (pie charts)
 - URL validation table (sortable)
@@ -176,19 +191,17 @@ Machine-readable format for integration:
 - CI/CD performance gates
 - Capacity planning
 
-## Roadmap
+## Documentation
 
-- **v0.1**: Core functionality ✅
-- **v0.2-0.3**: Enhanced reporting, configuration
-- **v0.4-0.6**: Authentication (cookie, JWT, OAuth)
-- **v0.7-0.9**: GraphQL, WebSockets, HAR replay
-- **v1.0+**: Distributed testing, CI/CD integration
-
-See [ROADMAP.md](docs/ROADMAP.md) for details.
+- [Quick Start](https://vnykmshr.github.io/lobster/quickstart)
+- [Configuration Reference](https://vnykmshr.github.io/lobster/configuration)
+- [Architecture](https://vnykmshr.github.io/lobster/architecture)
+- [Development Guide](https://vnykmshr.github.io/lobster/development)
+- [Changelog](https://vnykmshr.github.io/lobster/changelog)
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
+Contributions are welcome. See [Contributing Guidelines](https://vnykmshr.github.io/lobster/contributing).
 
 ### Development
 
@@ -200,15 +213,13 @@ make test      # Run tests
 make build     # Build binary
 ```
 
-See [DEVELOPMENT.md](docs/DEVELOPMENT.md) and [CONTRIBUTING.md](docs/CONTRIBUTING.md).
-
 ## Responsible Use
 
-⚠️ **Only test systems you own or have written permission to test.**
+**Only test systems you own or have written permission to test.**
 
 Unauthorized testing may violate computer fraud laws. Respect robots.txt (enabled by default), use rate limits, handle reports securely.
 
-See [RESPONSIBLE_USE.md](docs/RESPONSIBLE_USE.md) for full guidelines.
+See [Responsible Use](https://vnykmshr.github.io/lobster/responsible-use) for full guidelines.
 
 ## License
 
@@ -216,8 +227,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/vnykmshr/lobster/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- [Documentation](https://vnykmshr.github.io/lobster/)
+- [Issues](https://github.com/vnykmshr/lobster/issues)
+- [Discussions](https://github.com/vnykmshr/lobster/discussions)
 
-Built with [goflow](https://github.com/vnykmshr/goflow) • MIT License
+Built with [goflow](https://github.com/vnykmshr/goflow)

@@ -1,3 +1,8 @@
+---
+title: Configuration
+nav_order: 3
+---
+
 # Configuration Reference
 
 Complete reference for all Lobster configuration options, including CLI flags, configuration files, and environment variables.

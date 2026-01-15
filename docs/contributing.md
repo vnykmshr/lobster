@@ -1,6 +1,11 @@
+---
+title: Contributing
+nav_order: 8
+---
+
 # Contributing to Lobster
 
-Thank you for your interest in contributing to Lobster! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Lobster. This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -158,9 +163,9 @@ lobster/
 
 ## Getting Help
 
-- 💬 [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
-- 🐛 [Issue Tracker](https://github.com/vnykmshr/lobster/issues)
-- 📖 [Documentation](docs/)
+- [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
+- [Issue Tracker](https://github.com/vnykmshr/lobster/issues)
+- [Documentation](index)
 
 ## Recognition
 
@@ -169,4 +174,4 @@ Contributors will be recognized in:
 - Release notes for significant contributions
 - GitHub contributors page
 
-Thank you for making Lobster better! 🚀
+Thank you for making Lobster better.
