@@ -1415,3 +1415,123 @@ func TestProcessDryRun_InvalidStatusCode(t *testing.T) {
 		t.Error("Expected 500 to be marked as invalid")
 	}
 }
+
+// Test monitor goroutine behavior
+
+func TestMonitor_NoProgressMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.NoProgress = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Create a context that cancels after a short time
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	done := make(chan struct{})
+	startTime := time.Now()
+
+	go func() {
+		tester.monitor(ctx, startTime)
+		close(done)
+	}()
+
+	// Wait for monitor to exit
+	select {
+	case <-done:
+		// Success - monitor exited
+	case <-time.After(200 * time.Millisecond):
+		t.Error("Monitor did not exit in time")
+	}
+}
+
+func TestMonitor_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.NoProgress = false // Enable progress updates
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Set some results for monitor to display
+	atomic.StoreInt64(&tester.results.TotalRequests, 10)
+	atomic.StoreInt64(&tester.results.SuccessfulRequests, 8)
+	atomic.StoreInt64(&tester.results.FailedRequests, 2)
+
+	// Create a context that cancels after enough time for at least one tick
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	done := make(chan struct{})
+	startTime := time.Now()
+
+	go func() {
+		tester.monitor(ctx, startTime)
+		close(done)
+	}()
+
+	// Wait for monitor to exit
+	select {
+	case <-done:
+		// Success - monitor exited after context cancellation
+	case <-time.After(500 * time.Millisecond):
+		t.Error("Monitor did not exit after context cancellation")
+	}
+}
+
+func TestMonitor_VerboseMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	config := testConfig(server.URL)
+	config.NoProgress = false
+	config.Verbose = true
+	logger := testLogger()
+
+	tester, err := New(config, logger)
+	if err != nil {
+		t.Fatalf("Failed to create tester: %v", err)
+	}
+
+	// Set some results for monitor to log
+	atomic.StoreInt64(&tester.results.TotalRequests, 5)
+	tester.results.URLsDiscovered = 3
+
+	// Create a short-lived context
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	done := make(chan struct{})
+	startTime := time.Now()
+
+	go func() {
+		tester.monitor(ctx, startTime)
+		close(done)
+	}()
+
+	// Wait for monitor to exit
+	select {
+	case <-done:
+		// Success - monitor exited
+	case <-time.After(500 * time.Millisecond):
+		t.Error("Monitor in verbose mode did not exit in time")
+	}
+}
