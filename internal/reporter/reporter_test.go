@@ -75,11 +75,12 @@ func TestGenerateJSON_Success(t *testing.T) {
 	}
 }
 
-func TestGenerateJSON_FilePermissions(t *testing.T) {
-	results := testutil.SampleResults()
-	reporter := New(results)
+// testFilePermissions is a helper that tests generated file permissions.
+// It creates a temp file, calls the generate function, and verifies 0o600 mode.
+func testFilePermissions(t *testing.T, ext string, generateFn func(string) error) {
+	t.Helper()
 
-	tmpfile, err := os.CreateTemp("", "lobster-test-*.json")
+	tmpfile, err := os.CreateTemp("", "lobster-test-*."+ext)
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
@@ -92,23 +93,26 @@ func TestGenerateJSON_FilePermissions(t *testing.T) {
 		}
 	}()
 
-	err = reporter.GenerateJSON(tmpfile.Name())
+	err = generateFn(tmpfile.Name())
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
 
-	// Check file permissions
+	// Check file permissions (0o600 = -rw-------)
 	info, err := os.Stat(tmpfile.Name())
 	if err != nil {
 		t.Fatalf("Failed to stat file: %v", err)
 	}
 
-	mode := info.Mode()
-	// 0o600 = -rw-------
 	expectedMode := os.FileMode(0o600)
-	if mode != expectedMode {
-		t.Errorf("Expected file mode %v, got %v", expectedMode, mode)
+	if info.Mode() != expectedMode {
+		t.Errorf("Expected file mode %v, got %v", expectedMode, info.Mode())
 	}
+}
+
+func TestGenerateJSON_FilePermissions(t *testing.T) {
+	reporter := New(testutil.SampleResults())
+	testFilePermissions(t, "json", reporter.GenerateJSON)
 }
 
 func TestGenerateHTML_Success(t *testing.T) {
@@ -170,38 +174,8 @@ func TestGenerateHTML_Success(t *testing.T) {
 }
 
 func TestGenerateHTML_FilePermissions(t *testing.T) {
-	results := testutil.SampleResults()
-	reporter := New(results)
-
-	tmpfile, err := os.CreateTemp("", "lobster-test-*.html")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	if closeErr := tmpfile.Close(); closeErr != nil {
-		t.Fatalf("Failed to close temp file: %v", closeErr)
-	}
-	defer func() {
-		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
-			t.Logf("Warning: failed to remove temp file: %v", removeErr)
-		}
-	}()
-
-	err = reporter.GenerateHTML(tmpfile.Name())
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	// Check file permissions
-	info, err := os.Stat(tmpfile.Name())
-	if err != nil {
-		t.Fatalf("Failed to stat file: %v", err)
-	}
-
-	mode := info.Mode()
-	expectedMode := os.FileMode(0o600)
-	if mode != expectedMode {
-		t.Errorf("Expected file mode %v, got %v", expectedMode, mode)
-	}
+	reporter := New(testutil.SampleResults())
+	testFilePermissions(t, "html", reporter.GenerateHTML)
 }
 
 func TestPrepareTemplateData(t *testing.T) {
@@ -428,17 +402,14 @@ func TestPrepareTemplateData_EmptyResults(t *testing.T) {
 }
 
 func TestPrintSummary(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	results := testutil.SampleResults()
 	reporter := New(results)
-
-	// PrintSummary outputs to stdout, just verify it doesn't panic
 	reporter.PrintSummary()
-
-	// This test mainly ensures the function executes without error
-	// Visual output would need to be verified manually
 }
 
 func TestPrintSummary_WithErrors(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	results := testutil.SampleResults()
 	results.Errors = []domain.ErrorInfo{
 		{URL: "http://example.com/err1", Error: "timeout", Timestamp: time.Now()},
@@ -446,12 +417,11 @@ func TestPrintSummary_WithErrors(t *testing.T) {
 		{URL: "http://example.com/err3", Error: "timeout", Timestamp: time.Now()},
 	}
 	reporter := New(results)
-
-	// Should print error summary
 	reporter.PrintSummary()
 }
 
 func TestPrintSummary_WithSlowRequests(t *testing.T) {
+	_ = t // Test verifies no panic occurs
 	results := testutil.SampleResults()
 	results.SlowRequests = []domain.SlowRequest{
 		{URL: "http://example.com/slow1", ResponseTime: 5 * time.Second, StatusCode: 200},
@@ -459,7 +429,5 @@ func TestPrintSummary_WithSlowRequests(t *testing.T) {
 		{URL: "http://example.com/slow3", ResponseTime: 3 * time.Second, StatusCode: 500},
 	}
 	reporter := New(results)
-
-	// Should print slow requests section
 	reporter.PrintSummary()
 }
