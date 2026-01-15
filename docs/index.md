@@ -67,7 +67,7 @@ Lobster is a powerful tool. Only test systems you own or have explicit permissio
 
 Current stable release: **v2.0.0**
 
-See the [Changelog](changelog) for release history and migration guides.
+See the [Changelog](https://github.com/vnykmshr/lobster/blob/main/CHANGELOG.md) for release history and migration guides.
 
 ## Links
 
