@@ -87,6 +87,45 @@ func TestLoadConfiguration_NonExistentFile(t *testing.T) {
 	}
 }
 
+func TestLoadConfiguration_CLIOverridesFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	// File sets concurrency to 10, duration to 5m
+	configJSON := `{
+		"base_url": "http://file.example.com",
+		"concurrency": 10,
+		"duration": "5m"
+	}`
+
+	err := os.WriteFile(configPath, []byte(configJSON), 0600)
+	if err != nil {
+		t.Fatalf("Failed to create test config file: %v", err)
+	}
+
+	// CLI overrides concurrency to 25
+	opts := &ConfigOptions{
+		Concurrency: 25,
+	}
+	cfg, err := LoadConfiguration(configPath, opts)
+	if err != nil {
+		t.Fatalf("LoadConfiguration() error = %v", err)
+	}
+
+	// BaseURL should come from file
+	if cfg.BaseURL != "http://file.example.com" {
+		t.Errorf("Expected BaseURL 'http://file.example.com', got '%s'", cfg.BaseURL)
+	}
+	// Concurrency should be overridden by CLI
+	if cfg.Concurrency != 25 {
+		t.Errorf("Expected Concurrency 25 (CLI override), got %d", cfg.Concurrency)
+	}
+	// Duration should come from file
+	if cfg.Duration != "5m" {
+		t.Errorf("Expected Duration '5m' (from file), got '%s'", cfg.Duration)
+	}
+}
+
 func TestBuildAuthConfig_NoAuth(t *testing.T) {
 	opts := &ConfigOptions{}
 	cfg, err := BuildAuthConfig(opts)
@@ -201,6 +240,28 @@ func TestBuildAuthConfig_InvalidCookie(t *testing.T) {
 	}
 }
 
+func TestBuildAuthConfig_Bearer(t *testing.T) {
+	t.Setenv("LOBSTER_AUTH_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test")
+
+	opts := &ConfigOptions{
+		AuthType: "bearer",
+	}
+	cfg, err := BuildAuthConfig(opts)
+	if err != nil {
+		t.Fatalf("BuildAuthConfig() error = %v", err)
+	}
+
+	if cfg == nil {
+		t.Fatal("Expected non-nil config")
+	}
+	if cfg.Type != "bearer" {
+		t.Errorf("Expected Type 'bearer', got '%s'", cfg.Type)
+	}
+	if cfg.Token != "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test" {
+		t.Errorf("Expected Token to match, got '%s'", cfg.Token)
+	}
+}
+
 func TestValidateRateLimit_Zero(t *testing.T) {
 	rate := 0.0
 	err := ValidateRateLimit(&rate)
@@ -234,6 +295,18 @@ func TestValidateRateLimit_Normal(t *testing.T) {
 	// Rate should remain unchanged
 	if rate != 5.0 {
 		t.Errorf("Expected rate to remain 5.0, got %f", rate)
+	}
+}
+
+func TestValidateRateLimit_AtWarnThreshold(t *testing.T) {
+	// Rate exactly at WarnRate threshold should pass without warning prompts
+	rate := WarnRate // 1.0 - at threshold, no warning triggered
+	err := ValidateRateLimit(&rate)
+	if err != nil {
+		t.Errorf("ValidateRateLimit() error = %v", err)
+	}
+	if rate != WarnRate {
+		t.Errorf("Expected rate to remain at %f, got %f", WarnRate, rate)
 	}
 }
 
