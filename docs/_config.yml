@@ -41,6 +41,13 @@ heading_anchors: true
 # External navigation links open in new tab
 nav_external_links_new_tab: true
 
+# Default layout for all pages
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
 # Exclude from processing
 exclude:
   - Gemfile
