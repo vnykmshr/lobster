@@ -143,7 +143,6 @@ See [Configuration](configuration) for all authentication options.
 
 - [Configuration Reference](configuration) - All CLI flags and options
 - [Architecture](architecture) - How Lobster works
-- [Roadmap](roadmap) - Upcoming features
 - [Contributing](contributing) - How to contribute
 
 ## Getting Help

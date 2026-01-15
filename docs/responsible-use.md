@@ -1,6 +1,6 @@
 ---
 title: Responsible Use
-nav_order: 10
+nav_order: 9
 ---
 
 # Responsible Use Guidelines

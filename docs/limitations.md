@@ -276,23 +276,6 @@ Large result sets create large report files:
 
 Lobster does not create temporary files during testing. All state is in memory until final report generation.
 
-## Future Roadmap
-
-Planned improvements for future versions:
-
-**v1.1.0+**
-- Result streaming to disk for very large tests
-- Checkpointing for crash recovery
-- Intermediate report generation
-
-**v2.0.0+**
-- Distributed load generation (master/worker architecture)
-- HTTP/2 support
-- WebSocket testing
-- Cloud deployment options
-
-See the [roadmap](roadmap) for detailed feature timeline.
-
 ## Working Around Limitations
 
 ### Multiple Instance Coordination
@@ -348,9 +331,8 @@ For very large sites that exceed memory:
 
 If you hit limitations not documented here:
 
-- Check existing GitHub issues
+- Check existing [GitHub issues](https://github.com/vnykmshr/lobster/issues)
 - Open a new issue with your use case
 - Consider if your needs require distributed testing
-- Review alternative tools in the [roadmap](roadmap)
 
 We're always interested in understanding real-world usage and limitations.

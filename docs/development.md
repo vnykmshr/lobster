@@ -141,12 +141,11 @@ validationsMutex.Unlock()
 
 1. Update version in `cmd/lobster/main.go`
 2. Update `CHANGELOG.md` with changes
-3. Update `docs/roadmap.md` to mark completed items
-4. Run all tests: `go test ./...`
-5. Build for all platforms
-6. Create git tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
-7. Push tag: `git push origin vX.Y.Z`
-8. Create GitHub release with binaries
+3. Run all tests: `go test ./...`
+4. Build for all platforms
+5. Create git tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+6. Push tag: `git push origin vX.Y.Z`
+7. Create GitHub release with binaries
 
 ## Key Files
 
