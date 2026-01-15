@@ -202,47 +202,44 @@ func (t *Tester) Run(ctx context.Context) (*domain.TestResults, error) {
 	return t.results, nil
 }
 
-// aggregator collects results from workers via channels (lock-free)
+// aggregator collects results from workers via channels (lock-free).
+// Uses nil channel pattern: closed channels are set to nil to disable their select cases.
 func (t *Tester) aggregator(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	// Track which channels are still open
-	validationsClosed := false
-	errorsClosed := false
-	responseTimesClosed := false
-	slowRequestsClosed := false
+	// Local channel references - set to nil when closed to disable select case
+	validationsCh := t.validationsCh
+	errorsCh := t.errorsCh
+	responseTimesCh := t.responseTimesCh
+	slowRequestsCh := t.slowRequestsCh
 
-	for {
-		// Exit when all channels are closed
-		if validationsClosed && errorsClosed && responseTimesClosed && slowRequestsClosed {
-			return
-		}
-
+	// Continue while any channel is still open
+	for validationsCh != nil || errorsCh != nil || responseTimesCh != nil || slowRequestsCh != nil {
 		select {
-		case validation, ok := <-t.validationsCh:
+		case validation, ok := <-validationsCh:
 			if !ok {
-				validationsClosed = true
+				validationsCh = nil
 				continue
 			}
 			t.results.URLValidations = append(t.results.URLValidations, validation)
 
-		case errInfo, ok := <-t.errorsCh:
+		case errInfo, ok := <-errorsCh:
 			if !ok {
-				errorsClosed = true
+				errorsCh = nil
 				continue
 			}
 			t.results.Errors = append(t.results.Errors, errInfo)
 
-		case responseTime, ok := <-t.responseTimesCh:
+		case responseTime, ok := <-responseTimesCh:
 			if !ok {
-				responseTimesClosed = true
+				responseTimesCh = nil
 				continue
 			}
 			t.results.ResponseTimes = append(t.results.ResponseTimes, responseTime)
 
-		case slowReq, ok := <-t.slowRequestsCh:
+		case slowReq, ok := <-slowRequestsCh:
 			if !ok {
-				slowRequestsClosed = true
+				slowRequestsCh = nil
 				continue
 			}
 			t.results.SlowRequests = append(t.results.SlowRequests, slowReq)
