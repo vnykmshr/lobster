@@ -72,7 +72,7 @@ func (c *Crawler) isValidLink(link string) bool {
 }
 
 // AddURL adds a URL to the discovery queue if it's valid and not already discovered
-func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan domain.URLTask) bool {
+func (c *Crawler) AddURL(rawURL string, depth int, urlQueue chan<- domain.URLTask) bool {
 	// Parse and validate URL
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {

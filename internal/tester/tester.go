@@ -40,9 +40,9 @@ type Tester struct {
 	client       *http.Client
 	urlQueue     chan domain.URLTask
 	results      *domain.TestResults
-	rateLimiter  bucket.Limiter
-	crawler      *crawler.Crawler
-	robotsParser *robots.Parser
+	rateLimiter  domain.RateLimiter
+	crawler      domain.URLCrawler
+	robotsParser domain.RobotsChecker
 	logger       *slog.Logger
 
 	// Result channels for lock-free aggregation
