@@ -14,6 +14,13 @@ plugins:
 aux_links:
   GitHub: https://github.com/vnykmshr/lobster
 
+# Edit on GitHub link
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: https://github.com/vnykmshr/lobster
+gh_edit_branch: main
+gh_edit_source: docs
+
 # Footer
 footer_content: "Copyright &copy; 2026 Lobster. MIT License."
 
@@ -41,6 +48,21 @@ mermaid:
 
 # Heading anchor links
 heading_anchors: true
+
+# Callouts
+callouts:
+  note:
+    title: Note
+    color: blue
+  warning:
+    title: Warning
+    color: red
+  important:
+    title: Important
+    color: yellow
+  tip:
+    title: Tip
+    color: green
 
 # External navigation links open in new tab
 nav_external_links_new_tab: true
