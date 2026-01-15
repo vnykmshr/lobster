@@ -196,11 +196,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), testDuration)
-	defer cancel()
-
-	// Initialize stress tester
+	// Initialize stress tester config
 	testerConfig := domain.TesterConfig{
 		BaseURL:            cfg.BaseURL,
 		Concurrency:        cfg.Concurrency,
@@ -219,25 +215,8 @@ func main() {
 		NoProgress:         *noProgress,
 	}
 
-	stressTester, err := tester.New(testerConfig, logger)
-	if err != nil {
-		cancel()
-		logger.Error("Tester initialization failed",
-			"error", err,
-			"hint", "Check your configuration and base URL")
-		os.Exit(1)
-	}
-
-	// Run stress test
-	logger.Info("Starting stress test",
-		"base_url", cfg.BaseURL,
-		"concurrency", cfg.Concurrency,
-		"duration", cfg.Duration,
-		"rate", cfg.Rate,
-		"follow_links", cfg.FollowLinks,
-		"max_depth", cfg.MaxDepth)
-
-	results, err := stressTester.Run(ctx)
+	// Run stress test in a function that handles its own context
+	results, err := runStressTest(testerConfig, testDuration, logger)
 	if err != nil {
 		logger.Error("Stress test failed", "error", err)
 		os.Exit(1)
@@ -269,7 +248,6 @@ func main() {
 		// Save JSON results
 		err = rep.GenerateJSON(cfg.OutputFile)
 		if err != nil {
-			cancel()
 			logger.Error("Cannot write results",
 				"file", cfg.OutputFile,
 				"error", err,
@@ -287,6 +265,28 @@ func main() {
 			logger.Info("HTML report generated", "file", htmlFile)
 		}
 	}
+}
+
+// runStressTest executes the stress test with proper context management.
+// This function encapsulates context creation and cancellation to ensure
+// deferred cleanup runs correctly regardless of how the function exits.
+func runStressTest(config domain.TesterConfig, duration time.Duration, logger *slog.Logger) (*domain.TestResults, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	defer cancel()
+
+	stressTester, err := tester.New(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("tester initialization failed: %w", err)
+	}
+
+	logger.Info("Starting stress test",
+		"base_url", config.BaseURL,
+		"concurrency", config.Concurrency,
+		"rate", config.Rate,
+		"follow_links", config.FollowLinks,
+		"max_depth", config.MaxDepth)
+
+	return stressTester.Run(ctx)
 }
 
 type configOptions struct {
