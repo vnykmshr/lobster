@@ -54,16 +54,13 @@ document.addEventListener('DOMContentLoaded', function() {
   btn.textContent = icons[currentMode];
   btn.title = titles[currentMode];
 
-  // Insert into aux nav
-  var auxNav = document.querySelector('.site-nav, .aux-nav');
+  // Insert into aux nav (top-right header area with GitHub link)
+  var auxNav = document.querySelector('nav.aux-nav ul');
   if (auxNav) {
-    var auxList = auxNav.querySelector('ul');
-    if (auxList) {
-      var li = document.createElement('li');
-      li.className = 'aux-nav-item';
-      li.appendChild(btn);
-      auxList.appendChild(li);
-    }
+    var li = document.createElement('li');
+    li.className = 'aux-nav-item';
+    li.appendChild(btn);
+    auxNav.appendChild(li);
   }
 
   // Listen for system preference changes
