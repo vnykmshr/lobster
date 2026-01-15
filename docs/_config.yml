@@ -5,6 +5,11 @@ baseurl: /lobster
 
 remote_theme: just-the-docs/just-the-docs@v0.10.0
 
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+  - jekyll-include-cache
+
 # Repository info
 aux_links:
   GitHub: https://github.com/vnykmshr/lobster
