@@ -1,0 +1,26 @@
+<button class="btn js-toggle-dark-mode">Toggle dark mode</button>
+
+<script>
+const toggleDarkMode = document.querySelector('.js-toggle-dark-mode');
+
+jtd.addEvent(toggleDarkMode, 'click', function(){
+  if (jtd.getTheme() === 'dark') {
+    jtd.setTheme('light');
+    localStorage.setItem('theme', 'light');
+    toggleDarkMode.textContent = 'Toggle dark mode';
+  } else {
+    jtd.setTheme('dark');
+    localStorage.setItem('theme', 'dark');
+    toggleDarkMode.textContent = 'Toggle light mode';
+  }
+});
+
+// Set initial button text based on current theme
+(function() {
+  var savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'dark') {
+    toggleDarkMode.textContent = 'Toggle light mode';
+    jtd.setTheme('dark');
+  }
+})();
+</script>

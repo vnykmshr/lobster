@@ -1,0 +1,9 @@
+<script>
+// Apply saved theme on page load (before render to prevent flash)
+(function() {
+  var savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }
+})();
+</script>
