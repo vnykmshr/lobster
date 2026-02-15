@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/1mb-dev/lobster/internal/cli"
-	"github.com/1mb-dev/lobster/internal/domain"
-	"github.com/1mb-dev/lobster/internal/reporter"
-	"github.com/1mb-dev/lobster/internal/tester"
-	"github.com/1mb-dev/lobster/internal/util"
-	"github.com/1mb-dev/lobster/internal/validator"
+	"github.com/1mb-dev/lobster/v2/internal/cli"
+	"github.com/1mb-dev/lobster/v2/internal/domain"
+	"github.com/1mb-dev/lobster/v2/internal/reporter"
+	"github.com/1mb-dev/lobster/v2/internal/tester"
+	"github.com/1mb-dev/lobster/v2/internal/util"
+	"github.com/1mb-dev/lobster/v2/internal/validator"
 )
 
 // version is set at build time via ldflags: -X main.version=X.Y.Z

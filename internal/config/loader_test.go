@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/1mb-dev/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/v2/internal/domain"
 )
 
 func TestNewLoader(t *testing.T) {

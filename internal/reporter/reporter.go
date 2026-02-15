@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/1mb-dev/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/v2/internal/domain"
 )
 
 //go:embed templates/report.html

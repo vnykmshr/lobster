@@ -1,4 +1,4 @@
-module github.com/1mb-dev/lobster
+module github.com/1mb-dev/lobster/v2
 
 go 1.23.0
 

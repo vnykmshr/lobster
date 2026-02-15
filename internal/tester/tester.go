@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/1mb-dev/goflow/pkg/ratelimit/bucket"
-	"github.com/1mb-dev/lobster/internal/crawler"
-	"github.com/1mb-dev/lobster/internal/domain"
-	"github.com/1mb-dev/lobster/internal/robots"
-	"github.com/1mb-dev/lobster/internal/util"
+	"github.com/1mb-dev/lobster/v2/internal/crawler"
+	"github.com/1mb-dev/lobster/v2/internal/domain"
+	"github.com/1mb-dev/lobster/v2/internal/robots"
+	"github.com/1mb-dev/lobster/v2/internal/util"
 )
 
 const (
