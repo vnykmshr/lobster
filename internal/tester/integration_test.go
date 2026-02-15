@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // Integration tests verify end-to-end workflows and multi-component interactions.

@@ -16,11 +16,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/vnykmshr/goflow/pkg/ratelimit/bucket"
-	"github.com/vnykmshr/lobster/internal/crawler"
-	"github.com/vnykmshr/lobster/internal/domain"
-	"github.com/vnykmshr/lobster/internal/robots"
-	"github.com/vnykmshr/lobster/internal/util"
+	"github.com/1mb-dev/goflow/pkg/ratelimit/bucket"
+	"github.com/1mb-dev/lobster/internal/crawler"
+	"github.com/1mb-dev/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/robots"
+	"github.com/1mb-dev/lobster/internal/util"
 )
 
 const (

@@ -16,7 +16,7 @@
 - **Concurrent Testing**: Configurable workers with rate limiting
 - **Performance Validation**: Pass/fail against targets (p95, p99, success rate)
 - **Rich Reports**: HTML (charts), JSON (API), console (real-time)
-- **Smart Rate Limiting**: Token bucket via [goflow](https://github.com/vnykmshr/goflow)
+- **Smart Rate Limiting**: Token bucket via [goflow](https://github.com/1mb-dev/goflow)
 - **robots.txt Compliance**: Respects website preferences by default
 - **SSRF Protection**: Blocks private IP ranges by default
 
@@ -25,13 +25,13 @@
 ### Installation
 
 ```bash
-go install github.com/vnykmshr/lobster/cmd/lobster@latest
+go install github.com/1mb-dev/lobster/cmd/lobster@latest
 ```
 
 Or clone and build:
 
 ```bash
-git clone https://github.com/vnykmshr/lobster.git
+git clone https://github.com/1mb-dev/lobster.git
 cd lobster
 go build -o lobster cmd/lobster/main.go
 ```
@@ -64,7 +64,7 @@ export LOBSTER_AUTH_TOKEN="your-api-token"
 lobster -url https://api.example.com -auth-type bearer
 ```
 
-For more examples, see the [Quick Start Guide](https://vnykmshr.github.io/lobster/quickstart).
+For more examples, see the [Quick Start Guide](https://1mb-dev.github.io/lobster/quickstart).
 
 ## Configuration
 
@@ -72,7 +72,7 @@ Key flags: `-url`, `-concurrency`, `-duration`, `-rate`, `-max-depth`, `-output`
 
 Use `-config config.json` for complex setups. See `examples/config.example.json` for template.
 
-Full reference: [Configuration Guide](https://vnykmshr.github.io/lobster/configuration)
+Full reference: [Configuration Guide](https://1mb-dev.github.io/lobster/configuration)
 
 ## How It Works
 
@@ -126,7 +126,7 @@ lobster/
 
 **Domain** -> **Crawler** -> **Tester** -> **Reporter** + **Validator**
 
-See [Architecture](https://vnykmshr.github.io/lobster/architecture) for technical details.
+See [Architecture](https://1mb-dev.github.io/lobster/architecture) for technical details.
 
 ## Reports
 
@@ -193,20 +193,20 @@ Machine-readable format for integration:
 
 ## Documentation
 
-- [Quick Start](https://vnykmshr.github.io/lobster/quickstart)
-- [Configuration Reference](https://vnykmshr.github.io/lobster/configuration)
-- [Architecture](https://vnykmshr.github.io/lobster/architecture)
-- [Development Guide](https://vnykmshr.github.io/lobster/development)
-- [Changelog](https://vnykmshr.github.io/lobster/changelog)
+- [Quick Start](https://1mb-dev.github.io/lobster/quickstart)
+- [Configuration Reference](https://1mb-dev.github.io/lobster/configuration)
+- [Architecture](https://1mb-dev.github.io/lobster/architecture)
+- [Development Guide](https://1mb-dev.github.io/lobster/development)
+- [Changelog](https://1mb-dev.github.io/lobster/changelog)
 
 ## Contributing
 
-Contributions are welcome. See [Contributing Guidelines](https://vnykmshr.github.io/lobster/contributing).
+Contributions are welcome. See [Contributing Guidelines](https://1mb-dev.github.io/lobster/contributing).
 
 ### Development
 
 ```bash
-git clone https://github.com/vnykmshr/lobster.git
+git clone https://github.com/1mb-dev/lobster.git
 cd lobster
 make help      # See all targets
 make test      # Run tests
@@ -219,7 +219,7 @@ make build     # Build binary
 
 Unauthorized testing may violate computer fraud laws. Respect robots.txt (enabled by default), use rate limits, handle reports securely.
 
-See [Responsible Use](https://vnykmshr.github.io/lobster/responsible-use) for full guidelines.
+See [Responsible Use](https://1mb-dev.github.io/lobster/responsible-use) for full guidelines.
 
 ## License
 
@@ -227,8 +227,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- [Documentation](https://vnykmshr.github.io/lobster/)
-- [Issues](https://github.com/vnykmshr/lobster/issues)
-- [Discussions](https://github.com/vnykmshr/lobster/discussions)
+- [Documentation](https://1mb-dev.github.io/lobster/)
+- [Issues](https://github.com/1mb-dev/lobster/issues)
+- [Discussions](https://github.com/1mb-dev/lobster/discussions)
 
-Built with [goflow](https://github.com/vnykmshr/goflow)
+Built with [goflow](https://github.com/1mb-dev/goflow)

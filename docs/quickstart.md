@@ -12,7 +12,7 @@ Get up and running with Lobster in 5 minutes.
 ### From Source
 
 ```bash
-git clone https://github.com/vnykmshr/lobster.git
+git clone https://github.com/1mb-dev/lobster.git
 cd lobster
 go build -o lobster cmd/lobster/main.go
 ```
@@ -20,7 +20,7 @@ go build -o lobster cmd/lobster/main.go
 ### Using Go Install
 
 ```bash
-go install github.com/vnykmshr/lobster/cmd/lobster@latest
+go install github.com/1mb-dev/lobster/cmd/lobster@latest
 ```
 
 ## Basic Usage
@@ -147,5 +147,5 @@ See [Configuration](configuration) for all authentication options.
 
 ## Getting Help
 
-- [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
-- [Report Issues](https://github.com/vnykmshr/lobster/issues)
+- [GitHub Discussions](https://github.com/1mb-dev/lobster/discussions)
+- [Report Issues](https://github.com/1mb-dev/lobster/issues)

@@ -324,7 +324,7 @@ If you're unsure whether your use case is appropriate:
 
 ## Updates to These Guidelines
 
-These guidelines may be updated as best practices evolve. Check the [repository](https://github.com/vnykmshr/lobster) for the latest version.
+These guidelines may be updated as best practices evolve. Check the [repository](https://github.com/1mb-dev/lobster) for the latest version.
 
 Last updated: 2025
 
@@ -342,4 +342,4 @@ Testing is a valuable practice that makes applications better. Let's do it respo
 
 **Remember**: The fact that you *can* test something doesn't mean you *should*. When in doubt, ask for permission.
 
-If you have questions about these guidelines, please [open an issue](https://github.com/vnykmshr/lobster/issues) or contact the maintainers.
+If you have questions about these guidelines, please [open an issue](https://github.com/1mb-dev/lobster/issues) or contact the maintainers.

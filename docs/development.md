@@ -9,7 +9,7 @@ nav_order: 6
 
 **Lobster** is an intelligent web application stress testing tool that automatically discovers URLs through crawling and validates performance under concurrent load.
 
-**Repository**: https://github.com/vnykmshr/lobster
+**Repository**: https://github.com/1mb-dev/lobster
 **Version**: 2.0.0
 **License**: MIT
 
@@ -61,7 +61,7 @@ internal/domain/        # Core entities and types
 ### Setup
 
 ```bash
-git clone https://github.com/vnykmshr/lobster.git
+git clone https://github.com/1mb-dev/lobster.git
 cd lobster
 go mod download
 make build
@@ -205,12 +205,12 @@ docs(readme): update installation instructions
 
 ## Resources
 
-- [goflow docs](https://github.com/vnykmshr/goflow)
+- [goflow docs](https://github.com/1mb-dev/goflow)
 - [Go testing](https://go.dev/doc/tutorial/add-a-test)
 - [Semantic versioning](https://semver.org/)
 
 ## Contact
 
-- **Issues**: https://github.com/vnykmshr/lobster/issues
-- **Discussions**: https://github.com/vnykmshr/lobster/discussions
+- **Issues**: https://github.com/1mb-dev/lobster/issues
+- **Discussions**: https://github.com/1mb-dev/lobster/discussions
 - **Pull Requests**: Welcome! See [contributing](contributing)

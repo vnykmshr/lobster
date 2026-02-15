@@ -328,7 +328,7 @@ func (t *Tester) worker(ctx context.Context, wg *sync.WaitGroup) {
 
 **Rate limiting deep dive**:
 
-Lobster uses the token bucket algorithm via the [goflow](https://github.com/vnykmshr/goflow) library. This provides smooth rate limiting with burst capacity:
+Lobster uses the token bucket algorithm via the [goflow](https://github.com/1mb-dev/goflow) library. This provides smooth rate limiting with burst capacity:
 
 - **Tokens per second**: Set by `-rate` flag (default: 5.0)
 - **Burst capacity**: 2x the rate per second
@@ -559,7 +559,7 @@ jobs:
           ./scripts/wait-for-app.sh
 
       - name: Install Lobster
-        run: go install github.com/vnykmshr/lobster/cmd/lobster@latest
+        run: go install github.com/1mb-dev/lobster/cmd/lobster@latest
 
       - name: Run stress tests
         run: |
@@ -766,7 +766,7 @@ The tool is most effective as part of a continuous integration pipeline, providi
 
 ---
 
-**Project**: [github.com/vnykmshr/lobster](https://github.com/vnykmshr/lobster)
+**Project**: [github.com/1mb-dev/lobster](https://github.com/1mb-dev/lobster)
 **Version**: 2.0.0
 **License**: MIT
-**Author**: @vnykmshr
+**Author**: @1mb-dev

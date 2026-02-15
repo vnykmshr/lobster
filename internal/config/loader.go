@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // envVarPattern matches ${VAR_NAME} or ${VAR_NAME:-default} syntax

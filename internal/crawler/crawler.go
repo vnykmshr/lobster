@@ -9,7 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // Crawler handles URL discovery and link extraction

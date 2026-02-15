@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // BuildAuthConfig builds authentication configuration from environment variables and stdin.

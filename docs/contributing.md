@@ -36,7 +36,7 @@ Be respectful, inclusive, and professional in all interactions. We're building a
 
 1. **Fork the repository**
    ```bash
-   git clone https://github.com/vnykmshr/lobster.git
+   git clone https://github.com/1mb-dev/lobster.git
    cd lobster
    ```
 
@@ -163,8 +163,8 @@ lobster/
 
 ## Getting Help
 
-- [GitHub Discussions](https://github.com/vnykmshr/lobster/discussions)
-- [Issue Tracker](https://github.com/vnykmshr/lobster/issues)
+- [GitHub Discussions](https://github.com/1mb-dev/lobster/discussions)
+- [Issue Tracker](https://github.com/1mb-dev/lobster/issues)
 - [Documentation](index)
 
 ## Recognition

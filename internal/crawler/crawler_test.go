@@ -3,7 +3,7 @@ package crawler
 import (
 	"testing"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 func TestNew_Success(t *testing.T) {

@@ -148,6 +148,6 @@ Initial production release of Lobster, a lightweight HTTP load testing and link 
 - Configurable request timeout and test duration
 - Performance targets with P95/P99 latency thresholds
 
-[Unreleased]: https://github.com/vnykmshr/lobster/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/vnykmshr/lobster/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/vnykmshr/lobster/releases/tag/v1.0.0
+[Unreleased]: https://github.com/1mb-dev/lobster/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/1mb-dev/lobster/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/1mb-dev/lobster/releases/tag/v1.0.0

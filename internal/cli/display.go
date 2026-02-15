@@ -189,8 +189,8 @@ CONFIGURATION FILE EXAMPLE:
     Never store plaintext credentials in config files.
 
 DOCUMENTATION:
-    Full documentation: https://github.com/vnykmshr/lobster
-    Report issues: https://github.com/vnykmshr/lobster/issues
+    Full documentation: https://github.com/1mb-dev/lobster
+    Report issues: https://github.com/1mb-dev/lobster/issues
 
 VERSION:
     Lobster v` + version)

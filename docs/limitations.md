@@ -331,7 +331,7 @@ For very large sites that exceed memory:
 
 If you hit limitations not documented here:
 
-- Check existing [GitHub issues](https://github.com/vnykmshr/lobster/issues)
+- Check existing [GitHub issues](https://github.com/1mb-dev/lobster/issues)
 - Open a new issue with your use case
 - Consider if your needs require distributed testing
 

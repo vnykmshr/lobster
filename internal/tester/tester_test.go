@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // Test helper to create a test logger

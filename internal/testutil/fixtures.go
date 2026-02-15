@@ -4,7 +4,7 @@ package testutil
 import (
 	"time"
 
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // SampleResults returns a complete test results fixture for use in tests.

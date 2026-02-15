@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/vnykmshr/lobster/internal/config"
-	"github.com/vnykmshr/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/config"
+	"github.com/1mb-dev/lobster/internal/domain"
 )
 
 // LoadConfiguration loads configuration from file (if provided) and merges with CLI options.

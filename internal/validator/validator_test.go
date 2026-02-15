@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vnykmshr/lobster/internal/domain"
-	"github.com/vnykmshr/lobster/internal/testutil"
+	"github.com/1mb-dev/lobster/internal/domain"
+	"github.com/1mb-dev/lobster/internal/testutil"
 )
 
 func TestNew(t *testing.T) {

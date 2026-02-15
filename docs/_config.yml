@@ -1,6 +1,6 @@
 title: Lobster
 description: Intelligent web stress testing with automated URL discovery
-url: https://vnykmshr.github.io
+url: https://1mb-dev.github.io
 baseurl: /lobster
 
 remote_theme: just-the-docs/just-the-docs@v0.10.0
@@ -12,12 +12,12 @@ plugins:
 
 # Repository info
 aux_links:
-  GitHub: https://github.com/vnykmshr/lobster
+  GitHub: https://github.com/1mb-dev/lobster
 
 # Edit on GitHub link
 gh_edit_link: true
 gh_edit_link_text: "Edit this page on GitHub"
-gh_edit_repository: https://github.com/vnykmshr/lobster
+gh_edit_repository: https://github.com/1mb-dev/lobster
 gh_edit_branch: main
 gh_edit_source: docs
 gh_edit_view_mode: edit
