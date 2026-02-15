@@ -153,6 +153,12 @@ linters:
         linters:
           - gocyclo
 
+      # Exclude util package naming - established internal pattern
+      - path: internal/util/
+        linters:
+          - revive
+        text: "var-naming.*meaningless package"
+
       # Exclude url_validator.go from gocyclo and shadow - complex IP validation
       - path: internal/util/url_validator\.go
         linters:
